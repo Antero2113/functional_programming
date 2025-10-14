@@ -138,16 +138,37 @@
                   (helper (dec n) max-d max-len)))))] 
     (helper (dec limit) 0 0)))
 
-;; 2-3. Модульная реализация и map 
+;; 2-3. Модульная реализация с явным разделением на этапы
+
+;; 1. Генерация последовательности
+(defn generate-sequence [limit]
+  (range 2 limit))
+
+;; 2. Преобразование (map) - вычисление длины цикла для каждого числа
+(defn map-cycle-lengths [numbers]
+  (map (fn [d] {:d d :len (cycle-length d)}) numbers))
+
+;; 3. Свертка (reduce) - поиск максимального элемента
+(defn reduce-to-max [items]
+  (reduce (fn [max-item item]
+            (if (> (:len item) (:len max-item))
+              item
+              max-item))
+          {:d 0 :len 0}
+          items))
+
+;; 4. Извлечение результата
+(defn extract-result [max-item]
+  (:d max-item))
+
+;; Основная функция
 (defn euler-26-modular-map [limit]
-  (->> (range 2 limit)
-       (map (fn [d] {:d d :len (cycle-length d)}))
-       (reduce (fn [max-item item]
-                 (if (> (:len item) (:len max-item))
-                   item
-                   max-item))
-               {:d 0 :len 0})
-       :d))
+  (-> limit
+      generate-sequence      ; генерация
+      map-cycle-lengths     ; преобразование (map)
+      reduce-to-max         ; свертка (reduce)
+      extract-result))      ; извлечение результата
+
 
 ;; 4. Специальный синтаксис для циклов
 (defn euler-26-loop [limit]

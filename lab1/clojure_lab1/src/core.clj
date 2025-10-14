@@ -39,8 +39,20 @@
     (helper (range 2 (inc n)) 1)))
 
 ; 2. Модульная версия с reduce
+(defn generate-sequence [n]
+  (range 2 (inc n)))
+
+(defn filter-numbers [numbers]
+  numbers)
+
+(defn calculate-result [numbers]
+  (reduce lcm 1 numbers))
+
 (defn smallest-multiple-modular [n]
-  (reduce lcm 1 (range 2 (inc n)))) ; Генерация последовательности и свертка с вычислением НОК
+  (-> n
+      generate-sequence    ; этап 1: генерация
+      filter-numbers      ; этап 2: фильтрация
+      calculate-result))  ; этап 3: свертка
 
 ;; 3. Версия с отображением (map) и редукцией
 (defn prime-factors [n]

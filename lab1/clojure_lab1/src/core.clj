@@ -1,5 +1,5 @@
 (ns core
-  (:import problem5))
+  (:import EulerProblem))
 
 ;; 1.1. Хвостовая рекурсия
 (defn gcd-tail [a b]
@@ -43,7 +43,9 @@
     (recur b (mod a b))))
 
 (defn lcm [a b]
-  (/ (* a b) (gcd a b)))
+  (if (or (zero? a) (zero? b))
+    0
+    (/ (* a b) (gcd a b))))
 
 (defn smallest-multiple-modular [n]
   (->> (range 2 (inc n))     ; Генерация последовательности
@@ -89,8 +91,6 @@
                    (assoc seen remainder position)
                    (inc position)))))
 
-;; Обновленные реализации:
-
 ;; 1.1. Хвостовая рекурсия
 (defn euler-26-tail-recursion [limit]
   (letfn [(find-max-cycle [n max-d max-len]
@@ -126,9 +126,12 @@
 
 ;; 3. Генерация последовательности через map
 (defn euler-26-map [limit]
-  (let [cycles (map (fn [d] [d (cycle-length d)]) (range 2 limit))
-        max-cycle (apply max-key second cycles)]
-    (first max-cycle)))
+  (let [cycles (map (fn [d] [d (cycle-length d)]) (range 2 limit))]
+    (if (empty? cycles)
+      0
+      (->> cycles
+           (apply max-key second)
+           first))))
 
 ;; 4. Специальный синтаксис для циклов
 (defn euler-26-loop [limit]
@@ -146,18 +149,20 @@
 (defn euler-26-lazy [limit]
   (let [numbers (range 2 limit)
         cycles (map (fn [d] [d (cycle-length d)]) numbers)]
-    (->> cycles
-         (apply max-key second)
-         first)))
+    (if (empty? cycles)
+      0
+      (->> cycles
+           (apply max-key second)
+           first))))
 
 
 
 (defn -main
-  "Project Euler Problem 5 - Smallest multiple"
+  "Project Euler Problem 5 and 26"
   [& args]
   (println "Smallest positive number evenly divisible by all numbers from 1 to 20:")
 
-   (let [java-result (problem5/smallestMultiple 20)]
+   (let [java-result (EulerProblem/smallestMultiple 20)]
     
     (println "Java result:   " java-result))
 
@@ -180,10 +185,9 @@
              (apply = [result-tail result-rec result-modular result-map 
                       result-for result-lazy])))
 
-  ;; "Project Euler Problem 26 - Reciprocal cycles"
   (println "Наибольшая длина цикла в десятичном представлении дроби 1/d:")
 
-   (let [java-result (problem5/longestRecurringCycle 1000)]
+   (let [java-result (EulerProblem/longestRecurringCycle 1000)]
     
     (println "Java result:   " java-result))
                       

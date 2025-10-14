@@ -1,6 +1,7 @@
 
-public class problem5 {
+public class EulerProblem {
     
+    // Реализация для 5 задачи (наименьшее число, кратное числам от 1 до 20)
     public static long gcd(long a, long b) {
         if (b == 0) {
             return a;
@@ -39,7 +40,7 @@ public class problem5 {
             position++;
         }
         
-        return 0; // Конечная десятичная дробь
+        return 0; 
     }
     
     public static int longestRecurringCycle(int limit) {

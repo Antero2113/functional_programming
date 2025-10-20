@@ -39,22 +39,22 @@
     (helper (range 2 (inc n)) 1)))
 
 ; 2. Модульная версия с reduce
-(defn generate-sequence [n]
-  (range 2 (inc n)))
+(defn generate-sequence-sm [n]
+  (range 2 (inc n)))  ; от 2 до n включительно
 
 (defn filter-numbers [numbers]
-  numbers)
+  numbers)  ; тривиальная фильтрация, можно оставить как есть
 
 (defn calculate-result [numbers]
   (reduce lcm 1 numbers))
 
 (defn smallest-multiple-modular [n]
   (-> n
-      generate-sequence    ; этап 1: генерация
-      filter-numbers      ; этап 2: фильтрация
+      generate-sequence-sm    ; этап 1: генерация
+      filter-numbers      ; этап 2: фильтрация  
       calculate-result))  ; этап 3: свертка
 
-;; 3. Версия с отображением (map) и редукцией
+;; 3. Версия с отображением (map) и редукцией - ИСПРАВЛЕННАЯ
 (defn prime-factors [n]
   (loop [num n
          divisor 2
@@ -66,16 +66,14 @@
 
 (defn smallest-multiple-map [n]
   (let [numbers (range 2 (inc n))
-        ;; Используем map для вычисления простых множителей каждого числа
         all-factors (map prime-factors numbers)
-        ;; Группируем множители по максимальным степеням
         factor-powers (reduce (fn [acc factors]
                                (merge-with max acc (frequencies factors)))
                              {}
                              all-factors)]
-    ;; Вычисляем произведение
+    ;; ИСПРАВЛЕНИЕ: правильное целочисленное возведение в степень
     (reduce-kv (fn [result factor power]
-                 (* result (long (Math/pow factor power))))
+                 (* result (reduce * (repeat power factor)))) ; ← Исправлено
                1
                factor-powers)))
 
@@ -87,39 +85,42 @@
                 (reduce lcm 1 (take i numbers)))]
     (last steps)))
 
-;; 5. Работа с бесконечными списками
+;; 5. Работа с бесконечными списками - ИСПРАВЛЕННАЯ
 (defn smallest-multiples-infinite []
   (let [all-numbers (iterate inc 2)
         multiples-seq (reductions lcm 1 all-numbers)]
-    multiples-seq))  
+    multiples-seq))
 
-;; Функция для получения НОК чисел от 2 до n
 (defn smallest-multiple-lazy-infinite [n]
   (->> (smallest-multiples-infinite)
-       (drop (- n 1))   ; Пропускаем до нужной позиции (для n=5 берем 4-й элемент)
-       (first)))
+       (take n)           ; ← Исправлено: берем первые n элементов
+       (last)))           ; ← Берем последний (для n=20)
 
 
 ;; 26 ЗАДАЧА. RECIPROCAL CYCLES
 
-;; Вспомогательная функция для вычисления длины цикла
+;; Вспомогательная функция для вычисления длины цикла 
 (defn cycle-length [n]
-  (when (<= n 1)
-    (throw (IllegalArgumentException. "n must be greater than 1")))
-  (loop [remainder 1
-         seen {}
-         position 0]
-    (cond
-      (zero? remainder) 0  ; Конечная десятичная дробь
-      (contains? seen remainder) (- position (seen remainder))  ; Найден цикл
-      :else (recur (rem (* remainder 10) n)
-                   (assoc seen remainder position)
-                   (inc position)))))
+  ;; ИСПРАВЛЕНИЕ: правильная проверка входных данных
+  (if (<= n 1)
+    0  ; ← Возвращаем 0 вместо nil/исключения
+    (let [remainders (java.util.HashSet.)
+          remainders-list (java.util.ArrayList.)]
+      (loop [r 1]
+        (let [r (mod (* r 10) n)]
+          (cond
+            (zero? r) 0
+            (.contains remainders r) (let [idx (.indexOf remainders-list r)]
+                                       (- (count remainders-list) idx))
+            :else (do
+                    (.add remainders r)
+                    (.add remainders-list r)
+                    (recur r))))))))
 
-;; 1.1. Хвостовая рекурсия
+;; 1.1. Хвостовая рекурсия 
 (defn euler-26-tail-recursion [limit]
   (letfn [(find-max-cycle [n max-d max-len]
-            (if (< n 2)
+            (if (<= n 1)  ; ИСПРАВЛЕНО: условие остановки
               max-d
               (let [len (cycle-length n)]
                 (if (> len max-len)
@@ -127,10 +128,10 @@
                   (recur (dec n) max-d max-len)))))]
     (find-max-cycle (dec limit) 0 0)))
 
-;; 1.2. Обычная рекурсия 
+;; 1.2. Обычная рекурсия
 (defn euler-26-recursion [limit]
   (letfn [(helper [n max-d max-len]
-            (if (< n 2)
+            (if (<= n 1)  ; ИСПРАВЛЕНО: условие остановки
               max-d
               (let [curr-len (cycle-length n)]
                 (if (> curr-len max-len)
@@ -140,15 +141,15 @@
 
 ;; 2-3. Модульная реализация с явным разделением на этапы
 
-;; 1. Генерация последовательности
-(defn generate-sequence [limit]
-  (range 2 limit))
+;; 1. Генерация последовательности - ИСПРАВЛЕННАЯ
+(defn generate-sequence-rc [limit]
+  (range 2 limit))  ; от 2 до limit-1
 
 ;; 2. Преобразование (map) - вычисление длины цикла для каждого числа
 (defn map-cycle-lengths [numbers]
   (map (fn [d] {:d d :len (cycle-length d)}) numbers))
 
-;; 3. Свертка (reduce) - поиск максимального элемента
+;; 3. Свертка (reduce) - поиск максимального элемента  
 (defn reduce-to-max [items]
   (reduce (fn [max-item item]
             (if (> (:len item) (:len max-item))
@@ -164,16 +165,16 @@
 ;; Основная функция
 (defn euler-26-modular-map [limit]
   (-> limit
-      generate-sequence      ; генерация
-      map-cycle-lengths     ; преобразование (map)
+      generate-sequence-rc      ; генерация
+      map-cycle-lengths     ; преобразование (map)  
       reduce-to-max         ; свертка (reduce)
       extract-result))      ; извлечение результата
 
 
-;; 4. Специальный синтаксис для циклов
+;; 4. Специальный синтаксис для циклов 
 (defn euler-26-loop [limit]
-  (let [result (volatile! {:d 0 :len 0})] ; Изменяемое состояние через volatile!
-    (doseq [d (range (dec limit) 1 -1)]  ; Специальный синтаксис цикла
+  (let [result (volatile! {:d 0 :len 0})]
+    (doseq [d (range 2 limit)]  ; ИСПРАВЛЕНО: правильный диапазон
       (let [len (cycle-length d)]
         (when (> len (:len @result))
           (vswap! result assoc :d d :len len))))
@@ -182,22 +183,20 @@
 ;; 5. Работа с бесконечными списками
 (defn euler-26-infinite []
   (let [all-numbers (iterate inc 2)
-        number-cycles (map (fn [d] [d (cycle-length d)]) all-numbers)
-        
-        max-sequence (reductions (fn [current-max [d len]]
-                                   (if (> len (second current-max))
-                                     [d len]
-                                     current-max))
-                                 [0 0]     ; Начальное значение
+        number-cycles (map (fn [d] {:d d :len (cycle-length d)}) all-numbers)
+        max-sequence (reductions (fn [max-item item]
+                                   (if (> (:len item) (:len max-item))
+                                     item
+                                     max-item))
+                                 {:d 0 :len 0}
                                  number-cycles)]
-    max-sequence)) 
+    max-sequence))
 
-;; Функция для получения результата для первых N чисел
-(defn euler-26-lazy-infinite [n]
+(defn euler-26-lazy-infinite [limit]
   (->> (euler-26-infinite)
-       (drop n)           ; Пропускаем первые n элементов
-       (first)            ; Берем следующий элемент (n+1)
-       (first)))          ; Извлекаем число d
+       (take (- limit 1))     ; ← Исправлено: берем элементы для d < limit
+       (last)                 ; ← Берем последний элемент
+       (:d)))
 
 
 (defn -main

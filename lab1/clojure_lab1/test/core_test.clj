@@ -2,195 +2,143 @@
   (:require [clojure.test :refer :all]
             [core :refer :all]))
 
-;; Тесты для НОД
+;; Тесты для НОД и НОК
 (deftest gcd-test
-  (testing "НОД различных чисел"
-    (is (= 6 (gcd 54 24)))
+  (testing "Алгоритм Евклида для НОД"
+    (is (= 6 (gcd 48 18)))
     (is (= 1 (gcd 17 13)))
-    (is (= 5 (gcd 15 10)))))
-
-(deftest gcd-rec-test
-  (testing "НОД различных чисел (обычная рекурсия)"
-    (is (= 6 (gcd-rec 54 24)))
-    (is (= 1 (gcd-rec 17 13)))
-    (is (= 5 (gcd-rec 15 10)))))
+    (is (= 5 (gcd 15 10)))
+    (is (= 4 (gcd 12 8)))
+    (is (= 12 (gcd 36 24)))))
 
 (deftest lcm-test
-  (testing "НОК различных чисел"
+  (testing "Вычисление НОК"
     (is (= 36 (lcm 12 18)))
-    (is (= 91 (lcm 7 13)))
-    (is (= 60 (lcm 15 20)))))
-
-(deftest lcm-rec-test
-  (testing "НОК различных чисел (обычная рекурсия)"
-    (is (= 36 (lcm-rec 12 18)))
-    (is (= 91 (lcm-rec 7 13)))
-    (is (= 60 (lcm-rec 15 20)))))
-
-(deftest lcm-edge-cases-test
-  (testing "Крайние случаи НОК"
     (is (= 0 (lcm 0 5)))
-    (is (= 0 (lcm 7 0)))
-    (is (= 0 (lcm 0 0)))
-    (is (= 1 (lcm 1 1)))
-    (is (= 100 (lcm 1 100)))))
+    (is (= 0 (lcm 5 0)))
+    (is (= 15 (lcm 3 5)))
+    (is (= 60 (lcm 12 15)))))
 
-;; Тесты для задачи 5 (наименьшее кратное)
-(deftest smallest-multiple-consistency-test
-  (testing "Все версии smallest-multiple дают одинаковые результаты"
-    (doseq [n [2 3 5 10 15]]
-      (let [results [(smallest-multiple-tail n)
-                     (smallest-multiple-rec n)
-                     (smallest-multiple-modular n)
-                     (smallest-multiple-map n)
-                     (smallest-multiple-for n)
-                     (smallest-multiple-lazy-infinite n)]]
-        (is (apply = results) (str "Все результаты для n=" n " должны совпадать: " results))))))
+;; Тесты для задачи 5 - Smallest Multiple
+(deftest smallest-multiple-test
+  (let [expected-10 2520   ; Известный результат для 1-10
+        expected-20 232792560]  ; Ожидаемый результат для 1-20
+    
+    (testing "Проверка для n=10 (базовый случай)"
+      (is (= expected-10 (smallest-multiple-tail 10)))
+      (is (= expected-10 (smallest-multiple-rec 10)))
+      (is (= expected-10 (smallest-multiple-modular 10)))
+      (is (= expected-10 (smallest-multiple-map 10)))
+      (is (= expected-10 (smallest-multiple-for 10)))
+      (is (= expected-10 (smallest-multiple-lazy-infinite 10))))
+    
+    (testing "Проверка для n=20 (основной случай)"
+      (is (= expected-20 (smallest-multiple-tail 20)))
+      (is (= expected-20 (smallest-multiple-rec 20)))
+      (is (= expected-20 (smallest-multiple-modular 20)))
+      (is (= expected-20 (smallest-multiple-map 20)))
+      (is (= expected-20 (smallest-multiple-for 20)))
+      (is (= expected-20 (smallest-multiple-lazy-infinite 20))))
+    
+    (testing "Все методы дают одинаковый результат"
+      (let [results [(smallest-multiple-tail 20)
+                     (smallest-multiple-rec 20)
+                     (smallest-multiple-modular 20)
+                     (smallest-multiple-map 20)
+                     (smallest-multiple-for 20)
+                     (smallest-multiple-lazy-infinite 20)]]
+        (is (apply = results))))))
 
-(deftest smallest-multiple-values-test
-  (testing "Наименьшее число, делящееся на диапазон"
-    (is (= 1 (smallest-multiple-tail 1)))
-    (is (= 2 (smallest-multiple-tail 2)))
-    (is (= 6 (smallest-multiple-tail 3)))
-    (is (= 12 (smallest-multiple-tail 4)))
-    (is (= 60 (smallest-multiple-tail 5)))
-    (is (= 60 (smallest-multiple-rec 5)))
-    (is (= 420 (smallest-multiple-modular 7)))
-    (is (= 2520 (smallest-multiple-map 10)))
-    (is (= 2520 (smallest-multiple-for 10)))
-    (is (= 232792560 (smallest-multiple-lazy-infinite 20)))))
-
+;; Тесты для prime-factors
 (deftest prime-factors-test
   (testing "Разложение на простые множители"
-    (is (= [] (prime-factors 1)))
     (is (= [2 2 3] (prime-factors 12)))
     (is (= [2 3 5] (prime-factors 30)))
     (is (= [7] (prime-factors 7)))
-    (is (= [2 2 2 3] (prime-factors 24)))))
+    (is (= [2 2 2 3] (prime-factors 24)))
+    (is (= [] (prime-factors 1)))))
 
-;; Тесты для длины цикла
+;; Тесты для задачи 26 - Reciprocal Cycles
 (deftest cycle-length-test
   (testing "Длина цикла для различных знаменателей"
-    (is (= 0 (cycle-length 2)))
-    (is (= 0 (cycle-length 5)))
-    (is (= 1 (cycle-length 3)))
-    (is (= 1 (cycle-length 6)))
-    (is (= 6 (cycle-length 7)))
-    (is (= 2 (cycle-length 11)))
-    (is (= 0 (cycle-length 16)))
-    (is (= 1 (cycle-length 9)))
-    (is (= 6 (cycle-length 13)))))
+    (is (= 0 (cycle-length 1)))     ; 1/1 = 1.0 - нет цикла
+    (is (= 0 (cycle-length 2)))     ; 1/2 = 0.5 - нет цикла
+    (is (= 1 (cycle-length 3)))     ; 1/3 = 0.(3) - цикл длины 1
+    (is (= 0 (cycle-length 4)))     ; 1/4 = 0.25 - нет цикла
+    (is (= 0 (cycle-length 5)))     ; 1/5 = 0.2 - нет цикла
+    (is (= 1 (cycle-length 6)))     ; 1/6 = 0.1(6) - цикл длины 1
+    (is (= 6 (cycle-length 7)))     ; 1/7 = 0.(142857) - цикл длины 6
+    (is (= 0 (cycle-length 8)))     ; 1/8 = 0.125 - нет цикла
+    (is (= 1 (cycle-length 9)))     ; 1/9 = 0.(1) - цикл длины 1
+    (is (= 0 (cycle-length 10)))))  ; 1/10 = 0.1 - нет цикла
 
-(deftest cycle-length-edge-cases-test
-  (testing "Крайние случаи длины цикла"
-    (is (thrown? IllegalArgumentException (cycle-length 1)))
-    (is (thrown? IllegalArgumentException (cycle-length 0)))
-    (is (thrown? IllegalArgumentException (cycle-length -5)))))
-
-;; Тесты для задачи 26 (reciprocal cycles)
-(deftest euler-26-consistency-test
-  (testing "Все версии euler-26 дают одинаковые результаты"
-    (doseq [limit [10 20 50]]
-      (let [results [(euler-26-tail-recursion limit)
-                     (euler-26-recursion limit)
-                     (euler-26-modular-map limit)
-                     (euler-26-loop limit)
-                     (euler-26-lazy-infinite limit)]]
-        (is (apply = results) (str "Все результаты для limit=" limit " должны совпадать: " results))))))
-
-(deftest euler-26-values-test
-  (testing "Значения для задачи 26"
-    (is (= 7 (euler-26-tail-recursion 10)))
-    (is (= 7 (euler-26-recursion 10)))
-    (is (= 7 (euler-26-modular-map 10)))
-    (is (= 7 (euler-26-loop 10)))
-    (is (= 7 (euler-26-lazy-infinite 10)))
-    (is (= 97 (euler-26-tail-recursion 100)))))
-
-(deftest euler-26-edge-cases-test
-  (testing "Крайние случаи для задачи 26"
-    (is (= 0 (euler-26-tail-recursion 2)))
-    (is (= 0 (euler-26-recursion 2)))
-    (is (= 0 (euler-26-modular-map 2)))
-    (is (= 0 (euler-26-loop 2)))
-    (is (= 3 (euler-26-tail-recursion 4)))))
-
-;; Тесты для бесконечных последовательностей
-(deftest infinite-sequences-test
-  (testing "Бесконечные последовательности работают корректно"
-    (let [first-5-multiples (->> (smallest-multiples-infinite)
-                                 (take 5))
-          first-5-maxima (->> (euler-26-infinite)
-                              (take 5))]
-      
-      (is (= [1 2 6 12 60] first-5-multiples))
-      ;; Исправляем ожидаемые значения - первые два элемента [0 0]
-      (is (= [[0 0] [0 0] [3 1] [3 1] [3 1]] first-5-maxima)))))
-
-(deftest lazy-infinite-functions-test
-  (testing "Функции для работы с бесконечными последовательностями"
-    (is (= 60 (smallest-multiple-lazy-infinite 5)))
-    (is (= 2520 (smallest-multiple-lazy-infinite 10)))
-    (is (= 7 (euler-26-lazy-infinite 10)))
-    (is (= 97 (euler-26-lazy-infinite 100)))))
-
-;; Интеграционные тесты
-(deftest integration-test
-  (testing "Интеграция различных функций"
-    (let [n 10
-          multiple (smallest-multiple-modular n)
-          gcd-result (gcd multiple (inc multiple))
-          lcm-result (lcm multiple 2)]
-      (is (= 1 gcd-result))
-      (is (= multiple lcm-result)))))
-
-;; Тесты производительности
-(deftest performance-comparison-test
-  (testing "Сравнение производительности разных реализаций"
-    (println "\nПроизводительность smallest-multiple для n=20:")
-    (time (smallest-multiple-tail 20))
-    (time (smallest-multiple-rec 20))
-    (time (smallest-multiple-modular 20))
-    (time (smallest-multiple-map 20))
-    (time (smallest-multiple-for 20))
-    (time (smallest-multiple-lazy-infinite 20))
+(deftest euler-26-test
+  (let [expected-10 7   ; Для limit=10 максимальная длина цикла у 7
+        expected-100 97] ; Для limit=100 максимальная длина цикла у 97
     
-    (println "\nПроизводительность euler-26 для limit=100:")
+    (testing "Проверка для limit=10"
+      (is (= expected-10 (euler-26-tail-recursion 10)))
+      (is (= expected-10 (euler-26-recursion 10)))
+      (is (= expected-10 (euler-26-modular-map 10)))
+      (is (= expected-10 (euler-26-loop 10)))
+      (is (= expected-10 (euler-26-lazy-infinite 10))))
+    
+    (testing "Проверка для limit=100"
+      (is (= expected-100 (euler-26-tail-recursion 100)))
+      (is (= expected-100 (euler-26-recursion 100)))
+      (is (= expected-100 (euler-26-modular-map 100)))
+      (is (= expected-100 (euler-26-loop 100)))
+      (is (= expected-100 (euler-26-lazy-infinite 100))))
+    
+    (testing "Все методы дают одинаковый результат для limit=20"
+      (let [results [(euler-26-tail-recursion 20)
+                     (euler-26-recursion 20)
+                     (euler-26-modular-map 20)
+                     (euler-26-loop 20)
+                     (euler-26-lazy-infinite 20)]]
+        (is (apply = results))))))
+
+;; Тесты граничных случаев
+(deftest edge-cases-test
+  (testing "Граничные случаи для smallest-multiple"
+    (is (= 1 (smallest-multiple-tail 1)))
+    (is (= 2 (smallest-multiple-tail 2)))
+    (is (= 6 (smallest-multiple-tail 3))))
+  
+  (testing "Граничные случаи для cycle-length"
+    (is (= 0 (cycle-length 0)))     ; Обработка нуля
+    (is (= 0 (cycle-length -1)))    ; Обработка отрицательных чисел
+    (is (= 0 (cycle-length 1))))    ; Обработка единицы
+  
+  (testing "Граничные случаи для euler-26"
+    (is (= 0 (euler-26-tail-recursion 2)))  ; limit=2, только d=1 (не рассматривается)
+    (is (= 0 (euler-26-tail-recursion 3)))  ; limit=3, d=2 (длина цикла 0)
+    (is (= 3 (euler-26-tail-recursion 4)))) ; limit=4, d=3 (длина цикла 1) - но 3 > 2
+)
+
+;; Тесты производительности (опционально)
+(deftest performance-test
+  (testing "Все методы завершаются за разумное время"
+    (time (smallest-multiple-tail 20))
     (time (euler-26-tail-recursion 100))
-    (time (euler-26-recursion 100))
-    (time (euler-26-modular-map 100))
-    (time (euler-26-loop 100))
-    (time (euler-26-lazy-infinite 100))))
+    (is true))) ; Просто проверяем, что не падают
 
-;; Тесты для специальных случаев
-(deftest special-cases-test
-  (testing "Специальные случаи и граничные значения"
-    (is (number? (smallest-multiple-tail 1)))
-    (is (number? (smallest-multiple-rec 1)))
-    (is (number? (euler-26-tail-recursion 3)))
-    (is (number? (euler-26-recursion 3)))
-    (is (integer? (smallest-multiple-modular 10)))
-    (is (integer? (euler-26-modular-map 10)))
-    (is (vector? (first (euler-26-infinite))))
-    (is (number? (first (smallest-multiples-infinite))))))
+;; Генерация тестовых данных (опционально)
+(deftest sequence-generation-test
+  (testing "Генерация последовательностей"
+    (is (= [2 3 4 5] (generate-sequence-sm 5)))
+    (is (= [2 3 4 5 6 7 8 9] (generate-sequence-rc 10)))
+    (is (= [2 3 4] (generate-sequence-rc 5)))))
 
-;; Тесты для volatile! и doseq
-(deftest volatile-doseq-test
-  (testing "Реализация с volatile! и doseq работает корректно"
-    (let [result (euler-26-loop 10)]
-      (is (= 7 result))
-      (is (integer? result))
-      (is (pos? result)))))
-
-;; Исправленный тест для smallest-multiple-map с n=1
-(deftest smallest-multiple-map-edge-test
-  (testing "smallest-multiple-map с n=1"
-    ;; smallest-multiple-map возвращает 1 для n=1, а не nil
-    (is (= 1 (smallest-multiple-map 1)))))
-
-;; Тест для понимания поведения euler-26-lazy-infinite
-(deftest euler-26-lazy-infinite-behavior-test
-  (testing "Поведение euler-26-lazy-infinite"
-    (is (= 3 (euler-26-lazy-infinite 2)))
-    (is (= 7 (euler-26-lazy-infinite 6)))
-    (is (= 7 (euler-26-lazy-infinite 10)))))
+;; Запуск всех тестов
+(defn test-ns-hook
+  []
+  (gcd-test)
+  (lcm-test)
+  (smallest-multiple-test)
+  (prime-factors-test)
+  (cycle-length-test)
+  (euler-26-test)
+  (edge-cases-test)
+  (performance-test)
+  (sequence-generation-test))

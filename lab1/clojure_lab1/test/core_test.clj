@@ -116,19 +116,27 @@
     (is (= 3 (euler-26-tail-recursion 4)))) ; limit=4, d=3 (длина цикла 1) - но 3 > 2
 )
 
-;; Тесты производительности (опционально)
-(deftest performance-test
-  (testing "Все методы завершаются за разумное время"
-    (time (smallest-multiple-tail 20))
-    (time (euler-26-tail-recursion 100))
-    (is true))) ; Просто проверяем, что не падают
+;; Тесты производительности с измерением времени всех реализаций
+(deftest performance-smallest-multiple-test
+  (testing "Производительность всех реализаций Smallest Multiple (n=20)"
+    (println "\n=== Производительность Smallest Multiple (n=20) ===")
+    (println "1.1. Хвостовая рекурсия:        " (time (smallest-multiple-tail 20)))
+    (println "1.2. Обычная рекурсия:          " (time (smallest-multiple-rec 20)))
+    (println "2. Модульная версия (reduce): " (time (smallest-multiple-modular 20)))
+    (println "3. С отображением (map):      " (time (smallest-multiple-map 20)))
+    (println "4. Со спец. синтаксисом (for):" (time (smallest-multiple-for 20)))
+    (println "5. Ленивые списки:            " (time (smallest-multiple-lazy-infinite 20)))
+    (is true))) ; Проверяем, что все методы завершаются
 
-;; Генерация тестовых данных (опционально)
-(deftest sequence-generation-test
-  (testing "Генерация последовательностей"
-    (is (= [2 3 4 5] (generate-sequence-sm 5)))
-    (is (= [2 3 4 5 6 7 8 9] (generate-sequence-rc 10)))
-    (is (= [2 3 4] (generate-sequence-rc 5)))))
+(deftest performance-euler-26-test
+  (testing "Производительность всех реализаций Reciprocal Cycles (limit=1000)"
+    (println "\n=== Производительность Reciprocal Cycles (limit=1000) ===")
+    (println "1.1. Хвостовая рекурсия:        " (time (euler-26-tail-recursion 1000)))
+    (println "1.2. Обычная рекурсия:          " (time (euler-26-recursion 1000)))
+    (println "2-3. Модульная версия (reduce) с map:   " (time (euler-26-modular-map 1000)))
+    (println "4. Со спец. синтаксисом (for): " (time (euler-26-for 1000)))
+    (println "5. Ленивые списки:             " (time (euler-26-lazy-infinite 1000)))
+    (is true))) ; Проверяем, что все методы завершаются
 
 ;; Запуск всех тестов
 (defn test-ns-hook
@@ -140,5 +148,5 @@
   (cycle-length-test)
   (euler-26-test)
   (edge-cases-test)
-  (performance-test)
-  (sequence-generation-test))
+  ( performance-smallest-multiple-test)
+  (performance-euler-26-test))

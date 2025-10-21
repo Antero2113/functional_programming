@@ -80,21 +80,21 @@
       (is (= expected-10 (euler-26-tail-recursion 10)))
       (is (= expected-10 (euler-26-recursion 10)))
       (is (= expected-10 (euler-26-modular-map 10)))
-      (is (= expected-10 (euler-26-loop 10)))
+      (is (= expected-10 (euler-26-for 10)))
       (is (= expected-10 (euler-26-lazy-infinite 10))))
     
     (testing "Проверка для limit=100"
       (is (= expected-100 (euler-26-tail-recursion 100)))
       (is (= expected-100 (euler-26-recursion 100)))
       (is (= expected-100 (euler-26-modular-map 100)))
-      (is (= expected-100 (euler-26-loop 100)))
+      (is (= expected-100 (euler-26-for 100)))
       (is (= expected-100 (euler-26-lazy-infinite 100))))
     
     (testing "Все методы дают одинаковый результат для limit=20"
       (let [results [(euler-26-tail-recursion 20)
                      (euler-26-recursion 20)
                      (euler-26-modular-map 20)
-                     (euler-26-loop 20)
+                     (euler-26-for 20)
                      (euler-26-lazy-infinite 20)]]
         (is (apply = results))))))
 

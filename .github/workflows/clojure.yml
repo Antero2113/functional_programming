@@ -7,13 +7,27 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
-
+  test:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '8'  # или '11', '17' - в зависимости от вашего проекта
+        distribution: 'temurin'
+        
+    - name: Install Leiningen
+      run: |
+        curl -o /tmp/lein https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein
+        sudo install /tmp/lein /usr/local/bin/lein
+        lein version
+        
     - name: Install dependencies
       run: lein deps
+      
     - name: Run tests
       run: lein test

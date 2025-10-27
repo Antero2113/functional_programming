@@ -9,26 +9,26 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lab1/clojure_lab1
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Set up JDK
-      uses: actions/setup-java@v4
+    - uses: actions/checkout@v4
+    - uses: DeLaGuardo/setup-clojure@12.0
       with:
-        java-version: '8'  # или '11', '17' - в зависимости от вашего проекта
-        distribution: 'temurin'
-
-    - name: Change to project directory
-      run: cd lab1/clojure_lab1
+        lein: latest
         
-    - name: Install Leiningen
-      run: |
-        curl -o /tmp/lein https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein
-        sudo install /tmp/lein /usr/local/bin/lein
-        lein version
-        
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.m2
+          ~/.lein
+        key: ${{ runner.os }}-clojure-${{ hashFiles('lab1/clojure_lab1/project.clj') }}
+        restore-keys: |
+          ${{ runner.os }}-clojure-
+    
     - name: Install dependencies
       run: lein deps
       

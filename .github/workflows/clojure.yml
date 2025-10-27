@@ -19,6 +19,9 @@ jobs:
       with:
         java-version: '8'  # или '11', '17' - в зависимости от вашего проекта
         distribution: 'temurin'
+
+    - name: Change to project directory
+      run: cd lab1/clojure_lab1
         
     - name: Install Leiningen
       run: |

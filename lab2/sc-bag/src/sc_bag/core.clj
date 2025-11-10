@@ -28,70 +28,74 @@
     (if (and (> current-capacity 0) 
              (>= (/ current-size current-capacity) load-factor))
       (let [new-capacity (* 2 current-capacity)
-            new-buckets (atom (new-buckets new-capacity))
-            hash-fn (:hash-fn sc-bag)]
+            hash-fn (:hash-fn sc-bag)
+            eq-fn (:eq-fn sc-bag)]
         
-        ;; Перехешируем все элементы
-        (doseq [bucket (:buckets sc-bag)]
-          (loop [current bucket]
-            (when current
-              (let [bucket-idx (hash-bucket (:key current) new-capacity hash-fn)
-                    existing (get @new-buckets bucket-idx)
-                    new-node (Node. (:key current) (:count current) existing)]
-                (swap! new-buckets assoc bucket-idx new-node)
-                (recur (:next current))))))
-        
-        (->SCBag @new-buckets current-size hash-fn (:eq-fn sc-bag) load-factor))
+        ;; Перехешируем все элементы (неизменяемо)
+        (loop [buckets (new-buckets new-capacity)
+               i 0]
+          (if (>= i (count (:buckets sc-bag)))
+            (->SCBag buckets current-size hash-fn eq-fn load-factor)
+            (let [bucket (get (:buckets sc-bag) i)]
+              (if (nil? bucket)
+                (recur buckets (inc i))
+                (let [new-buckets' (loop [current bucket
+                                          buckets' buckets]
+                                     (if (nil? current)
+                                       buckets'
+                                       (let [bucket-idx (hash-bucket (:key current) new-capacity hash-fn)
+                                             existing (get buckets' bucket-idx)
+                                             new-node (Node. (:key current) (:count current) existing)]
+                                         (recur (:next current) 
+                                                (assoc buckets' bucket-idx new-node)))))]
+                  (recur new-buckets' (inc i))))))))
       sc-bag)))
 
 (defn- update-bucket [bucket key count-update eq-fn]
-  (let [new-count (count-update (loop [current bucket]
-                                  (if current
-                                    (if (eq-fn (:key current) key)
-                                      (:count current)
-                                      (recur (:next current)))
-                                    0)))]
+  (let [old-count (loop [current bucket]
+                    (if current
+                      (if (eq-fn (:key current) key)
+                        (:count current)
+                        (recur (:next current)))
+                      0))
+        new-count (count-update old-count)]
     (if (pos? new-count)
       ;; Добавляем или обновляем узел
-      (let [new-node (Node. key new-count nil)]
-        (if (nil? bucket)
-          new-node
-          (loop [current bucket
-                 prev nil
-                 found? false]
-            (cond
-              (nil? current)
-              (if found?
-                (if prev
-                  (Node. (:key prev) (:count prev) new-node)
-                  new-node)
-                (Node. (:key prev) (:count prev) new-node))
-              
-              (eq-fn (:key current) key)
-              (if prev
-                (Node. (:key prev) (:count prev) 
-                       (Node. key new-count (:next current)))
-                (Node. key new-count (:next current)))
-              
-              :else
-              (recur (:next current) current found?)))))
+      (if (nil? bucket)
+        (Node. key new-count nil)
+        (letfn [(build-list [current found?]
+                  (cond
+                    (nil? current)
+                    (if found?
+                      nil
+                      (Node. key new-count nil))
+                    
+                    (eq-fn (:key current) key)
+                    (Node. key new-count (build-list (:next current) true))
+                    
+                    :else
+                    (Node. (:key current) (:count current) 
+                           (build-list (:next current) found?))))]
+          (build-list bucket false)))
       ;; Удаляем узел (new-count <= 0)
       (if (nil? bucket)
         nil
-        (loop [current bucket
-               prev nil
-               found? false]
-          (cond
-            (nil? current)
-            (if prev prev nil)
-            
-            (eq-fn (:key current) key)
-            (if prev
-              (Node. (:key prev) (:count prev) (:next current))
-              (:next current))
-            
-            :else
-            (recur (:next current) current found?)))))))
+        (letfn [(build-list [current found?]
+                  (cond
+                    (nil? current)
+                    nil
+                    
+                    (eq-fn (:key current) key)
+                    (build-list (:next current) true)
+                    
+                    :else
+                    (Node. (:key current) (:count current) 
+                           (build-list (:next current) found?))))]
+          (let [result (build-list bucket false)
+                was-found? (not= old-count 0)]
+            (if (and (nil? result) (not was-found?))
+              bucket
+              result)))))))
 
 (defn- bucket-size-change [old-bucket new-bucket key eq-fn]
   (let [old-count (loop [current old-bucket]
@@ -291,19 +295,27 @@
 (defn bag-union 
   "Объединение двух bags (моноидная операция)"
   [bag1 bag2]
-  (let [all-elements (into #{} (concat (bag-seq bag1) (bag-seq bag2)))]
-    (reduce 
-      (fn [acc elem]
-        (let [count1 (get-count bag1 elem)
-              count2 (get-count bag2 elem)
-              total (+ count1 count2)]
-          (loop [result acc
-                 n total]
-            (if (zero? n)
-              result
-              (recur (bag-conj result elem) (dec n)))))))
-      (empty-bag)
-      all-elements))
+  (let [all-elements (into #{} (concat (bag-seq bag1) (bag-seq bag2)))
+        ;; Используем параметры из bag1, если он не пустой, иначе из bag2
+        opts (if (instance? SCBag bag1)
+               {:hash-fn (:hash-fn bag1) :eq-fn (:eq-fn bag1)}
+               (if (instance? SCBag bag2)
+                 {:hash-fn (:hash-fn bag2) :eq-fn (:eq-fn bag2)}
+                 {}))]
+    (if (empty? all-elements)
+      (empty-bag opts)
+      (reduce 
+        (fn [acc elem]
+          (let [count1 (get-count bag1 elem)
+                count2 (get-count bag2 elem)
+                total (+ count1 count2)]
+            (loop [result acc
+                   n total]
+              (if (zero? n)
+                result
+                (recur (bag-conj result elem) (dec n))))))
+        (empty-bag opts)
+        all-elements))))
 
 ;; === Сравнение ===
 

@@ -105,7 +105,7 @@
       ;; Пример объединения
       (testing "Пример объединения"
         (let [union-result (bag-union (bag [1 2]) (bag [2 3]))]
-          (is (= 3 (count-elements union-result)))
+          (is (= 4 (count-elements union-result)))  ;; 1 + 2 + 1 = 4
           (is (= 1 (get-count union-result 1)))
           (is (= 2 (get-count union-result 2)))
           (is (= 1 (get-count union-result 3))))))))

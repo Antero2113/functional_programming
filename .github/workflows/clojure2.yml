@@ -1,4 +1,4 @@
-name: Clojure CI2
+name: Clojure CI
 
 on:
   push:
@@ -15,6 +15,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # нужно, чтобы можно было пушить обратно
+
     - uses: DeLaGuardo/setup-clojure@12.0
       with:
         lein: latest
@@ -38,10 +41,28 @@ jobs:
     - name: Run lint (clj-kondo)
       run: clj-kondo --lint src test
 
-    # --- Format check (basic) ---
+    # --- Check formatting ---
     - name: Check formatting (cljfmt)
-      run: lein cljfmt check
+      id: fmt
+      run: |
+        set +e
+        lein cljfmt check
+        status=$?
+        set -e
+        echo "fmt_status=$status" >> $GITHUB_OUTPUT
 
-    # --- Tests ---
+    # --- Auto-fix formatting if needed ---
+    - name: Auto-fix and commit formatting
+      if: steps.fmt.outputs.fmt_status != '0'
+      run: |
+        echo "Formatting issues found — applying fixes..."
+        lein cljfmt fix
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add .
+        git commit -m "style: auto-format Clojure code via cljfmt"
+        git push
+
+    # --- Run tests ---
     - name: Run tests
       run: lein test

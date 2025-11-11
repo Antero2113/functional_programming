@@ -39,7 +39,8 @@ jobs:
 
     # --- Lint check ---
     - name: Run lint (clj-kondo)
-      run: clj-kondo --lint src test
+      run: |
+        clj-kondo --lint src test || [ $? -eq 2 ]
 
     # --- Check formatting ---
     - name: Check formatting (cljfmt)

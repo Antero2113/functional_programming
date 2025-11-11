@@ -1,4 +1,4 @@
-name: Clojure CI
+name: Clojure CI2
 
 on:
   push:
@@ -18,7 +18,9 @@ jobs:
     - uses: DeLaGuardo/setup-clojure@12.0
       with:
         lein: latest
-        
+        clj-kondo: latest
+        cljfmt: latest
+
     - name: Cache dependencies
       uses: actions/cache@v3
       with:
@@ -28,10 +30,18 @@ jobs:
         key: ${{ runner.os }}-clojure-${{ hashFiles('lab2/sc-bag/project.clj') }}
         restore-keys: |
           ${{ runner.os }}-clojure-
-    
+
     - name: Install dependencies
       run: lein deps
-      
+
+    # --- Lint check ---
+    - name: Run lint (clj-kondo)
+      run: clj-kondo --lint src test
+
+    # --- Format check (basic) ---
+    - name: Check formatting (cljfmt)
+      run: lein cljfmt check
+
+    # --- Tests ---
     - name: Run tests
       run: lein test
- 

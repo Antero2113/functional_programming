@@ -36,7 +36,7 @@
       (is (= 2 (distinct-count b)))
       (is (= 1 (get-count b :a)))
       (is (= 1 (get-count b :b)))
-      
+
       (let [b' (bag-disj b :c)]  ;; Удаление несуществующего элемента
         (is (bag-equals? b b'))))))
 
@@ -88,15 +88,15 @@
           b1 (bag [1 2 2 3])
           b2 (bag [2 3 4])
           b3 (bag [1 4 4])]
-      
+
       ;; Левая идентичность
       (testing "Левая идентичность"
         (is (bag-equals? (bag-union empty-b b1) b1)))
-      
+
       ;; Правая идентичность  
       (testing "Правая идентичность"
         (is (bag-equals? (bag-union b1 empty-b) b1)))
-      
+
       ;; Ассоциативность
       (testing "Ассоциативность"
         (is (bag-equals? (bag-union (bag-union b1 b2) b3)
@@ -118,7 +118,7 @@
           b4 (bag [1 2 2 3 4]) ;; Больше элементов
           b5 (bag [1 2 3 3])  ;; Другое распределение
           empty-b (empty-bag)]
-      
+
       (is (bag-equals? b1 b2))
       (is (not (bag-equals? b1 b3)))
       (is (not (bag-equals? b1 b4)))
@@ -135,33 +135,33 @@
   (prop/for-all [v1 small-vector-gen
                  v2 small-vector-gen
                  v3 small-vector-gen]
-    (let [b1 (bag v1)
-          b2 (bag v2)
-          b3 (bag v3)]
-      (bag-equals? (bag-union (bag-union b1 b2) b3)
-                   (bag-union b1 (bag-union b2 b3))))))
+                (let [b1 (bag v1)
+                      b2 (bag v2)
+                      b3 (bag v3)]
+                  (bag-equals? (bag-union (bag-union b1 b2) b3)
+                               (bag-union b1 (bag-union b2 b3))))))
 
 (defspec monoid-identity 50
   (prop/for-all [v small-vector-gen]
-    (let [b (bag v)
-          empty-b (empty-bag)]
-      (and (bag-equals? (bag-union empty-b b) b)
-           (bag-equals? (bag-union b empty-b) b)))))
+                (let [b (bag v)
+                      empty-b (empty-bag)]
+                  (and (bag-equals? (bag-union empty-b b) b)
+                       (bag-equals? (bag-union b empty-b) b)))))
 
 (defspec count-consistency 50
   (prop/for-all [v small-vector-gen]
-    (let [b (bag v)]
-      (and (= (count v) (count-elements b))
-           (= (count (distinct v)) (distinct-count b))))))
+                (let [b (bag v)]
+                  (and (= (count v) (count-elements b))
+                       (= (count (distinct v)) (distinct-count b))))))
 
 (defspec add-remove-consistency 50
   (prop/for-all [v small-vector-gen
                  elem element-gen]
-    (let [b1 (bag v)
-          b2 (bag-conj b1 elem)]
-      (if (some #(= % elem) v)
-        (bag-equals? b1 (bag-disj b2 elem))
-        (= (get-count b1 elem) (dec (get-count b2 elem)))))))
+                (let [b1 (bag v)
+                      b2 (bag-conj b1 elem)]
+                  (if (some #(= % elem) v)
+                    (bag-equals? b1 (bag-disj b2 elem))
+                    (= (get-count b1 elem) (dec (get-count b2 elem)))))))
 
 (comment
   ;; Примеры использования в REPL
@@ -171,6 +171,6 @@
     (println "Frequencies:" (bag-frequencies b))
     (println "Count of 2:" (get-count b 2))
     (println "Distinct elements:" (bag-distinct-seq b)))
-  
+
   ;; Запуск тестов
   (run-tests 'sc-bag.core-test))

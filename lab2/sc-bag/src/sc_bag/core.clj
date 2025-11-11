@@ -25,12 +25,12 @@
   (let [current-capacity (count (:buckets sc-bag))
         current-size (:size sc-bag)
         load-factor (:load-factor sc-bag)]
-    (if (and (> current-capacity 0) 
+    (if (and (> current-capacity 0)
              (>= (/ current-size current-capacity) load-factor))
       (let [new-capacity (* 2 current-capacity)
             hash-fn (:hash-fn sc-bag)
             eq-fn (:eq-fn sc-bag)]
-        
+
         ;; Перехешируем все элементы (неизменяемо)
         (loop [buckets (new-buckets new-capacity)
                i 0]
@@ -46,7 +46,7 @@
                                        (let [bucket-idx (hash-bucket (:key current) new-capacity hash-fn)
                                              existing (get buckets' bucket-idx)
                                              new-node (Node. (:key current) (:count current) existing)]
-                                         (recur (:next current) 
+                                         (recur (:next current)
                                                 (assoc buckets' bucket-idx new-node)))))]
                   (recur new-buckets' (inc i))))))))
       sc-bag)))
@@ -69,12 +69,12 @@
                     (if found?
                       nil
                       (Node. key new-count nil))
-                    
+
                     (eq-fn (:key current) key)
                     (Node. key new-count (build-list (:next current) true))
-                    
+
                     :else
-                    (Node. (:key current) (:count current) 
+                    (Node. (:key current) (:count current)
                            (build-list (:next current) found?))))]
           (build-list bucket false)))
       ;; Удаляем узел (new-count <= 0)
@@ -84,12 +84,12 @@
                   (cond
                     (nil? current)
                     nil
-                    
+
                     (eq-fn (:key current) key)
                     (build-list (:next current) true)
-                    
+
                     :else
-                    (Node. (:key current) (:count current) 
+                    (Node. (:key current) (:count current)
                            (build-list (:next current) found?))))]
           (let [result (build-list bucket false)
                 was-found? (not= old-count 0)]
@@ -117,7 +117,7 @@
 
 ;; === Функции высшего порядка (должны быть определены до их использования) ===
 
-(defn reduce-left 
+(defn reduce-left
   "Левая свертка"
   [f init sc-bag]
   (loop [acc init
@@ -139,7 +139,7 @@
                             acc'))]
             (recur new-acc (inc i))))))))
 
-(defn reduce-right 
+(defn reduce-right
   "Правая свертка"
   [f init sc-bag]
   (let [elements (reduce-left (fn [acc elem] (conj acc elem)) [] sc-bag)]
@@ -147,7 +147,7 @@
 
 ;; === Основной API ===
 
-(defn empty-bag 
+(defn empty-bag
   "Создает пустой bag"
   ([] (empty-bag {}))
   ([{:keys [hash-fn eq-fn load-factor]
@@ -156,11 +156,11 @@
           load-factor 0.75}}]
    (->SCBag (new-buckets 16) 0 hash-fn eq-fn load-factor)))
 
-(defn bag 
+(defn bag
   "Создает bag из коллекции элементов"
   ([coll] (bag coll {}))
   ([coll opts]
-   (reduce (fn [acc x] 
+   (reduce (fn [acc x]
              (let [hash-fn (:hash-fn acc)
                    eq-fn (:eq-fn acc)
                    buckets (:buckets acc)
@@ -173,7 +173,7 @@
            (empty-bag opts)
            coll)))
 
-(defn bag-conj 
+(defn bag-conj
   "Добавляет элемент в bag"
   [sc-bag element]
   (let [hash-fn (:hash-fn sc-bag)
@@ -187,7 +187,7 @@
         (update :size + (bucket-size-change current-bucket new-bucket element eq-fn))
         ensure-capacity)))
 
-(defn bag-disj 
+(defn bag-disj
   "Удаляет один экземпляр элемента из bag"
   [sc-bag element]
   (let [hash-fn (:hash-fn sc-bag)
@@ -200,7 +200,7 @@
         (assoc :buckets (assoc buckets bucket-idx new-bucket))
         (update :size + (bucket-size-change current-bucket new-bucket element eq-fn)))))
 
-(defn get-count 
+(defn get-count
   "Возвращает количество вхождений элемента"
   [sc-bag element]
   (if (instance? SCBag sc-bag)
@@ -217,12 +217,12 @@
     ;; Если передан не SCBag, считаем это обычной коллекцией
     (get (frequencies sc-bag) element 0)))
 
-(defn bag-contains? 
+(defn bag-contains?
   "Проверяет наличие элемента в bag"
   [sc-bag element]
   (> (get-count sc-bag element) 0))
 
-(defn count-elements 
+(defn count-elements
   "Общее количество элементов (с учетом кратности)"
   [sc-bag]
   (if (instance? SCBag sc-bag)
@@ -236,7 +236,7 @@
     ;; Если передан не SCBag, считаем это обычной коллекцией
     (count sc-bag)))
 
-(defn distinct-count 
+(defn distinct-count
   "Количество уникальных элементов"
   [sc-bag]
   (if (instance? SCBag sc-bag)
@@ -246,35 +246,35 @@
 
 ;; === Функции высшего порядка ===
 
-(defn bag-filter 
+(defn bag-filter
   "Фильтрация элементов bag"
   [pred sc-bag]
   (if (instance? SCBag sc-bag)
-    (reduce-left 
-      (fn [acc elem]
-        (if (pred elem)
-          (bag-conj acc elem)
-          acc))
-      (empty-bag {:hash-fn (:hash-fn sc-bag) :eq-fn (:eq-fn sc-bag)})
-      sc-bag)
+    (reduce-left
+     (fn [acc elem]
+       (if (pred elem)
+         (bag-conj acc elem)
+         acc))
+     (empty-bag {:hash-fn (:hash-fn sc-bag) :eq-fn (:eq-fn sc-bag)})
+     sc-bag)
     ;; Если передан не SCBag, фильтруем как обычную коллекцию
     (filter pred sc-bag)))
 
-(defn bag-map 
+(defn bag-map
   "Отображение функции на элементы bag"
   [f sc-bag]
   (if (instance? SCBag sc-bag)
-    (reduce-left 
-      (fn [acc elem]
-        (bag-conj acc (f elem)))
-      (empty-bag {:hash-fn (:hash-fn sc-bag) :eq-fn (:eq-fn sc-bag)})
-      sc-bag)
+    (reduce-left
+     (fn [acc elem]
+       (bag-conj acc (f elem)))
+     (empty-bag {:hash-fn (:hash-fn sc-bag) :eq-fn (:eq-fn sc-bag)})
+     sc-bag)
     ;; Если передан не SCBag, маппим как обычную коллекцию
     (map f sc-bag)))
 
 ;; === Интерфейс Seqable ===
 
-(defn bag-seq 
+(defn bag-seq
   "Последовательность всех элементов (с учетом кратности)"
   [sc-bag]
   (if (instance? SCBag sc-bag)
@@ -282,7 +282,7 @@
     ;; Если передан не SCBag, возвращаем как есть
     sc-bag))
 
-(defn bag-distinct-seq 
+(defn bag-distinct-seq
   "Последовательность уникальных элементов"
   [sc-bag]
   (if (instance? SCBag sc-bag)
@@ -292,7 +292,7 @@
 
 ;; === Моноидные операции ===
 
-(defn bag-union 
+(defn bag-union
   "Объединение двух bags (моноидная операция)"
   [bag1 bag2]
   (let [all-elements (into #{} (concat (bag-seq bag1) (bag-seq bag2)))
@@ -304,40 +304,40 @@
                  {}))]
     (if (empty? all-elements)
       (empty-bag opts)
-      (reduce 
-        (fn [acc elem]
-          (let [count1 (get-count bag1 elem)
-                count2 (get-count bag2 elem)
-                total (+ count1 count2)]
-            (loop [result acc
-                   n total]
-              (if (zero? n)
-                result
-                (recur (bag-conj result elem) (dec n))))))
-        (empty-bag opts)
-        all-elements))))
+      (reduce
+       (fn [acc elem]
+         (let [count1 (get-count bag1 elem)
+               count2 (get-count bag2 elem)
+               total (+ count1 count2)]
+           (loop [result acc
+                  n total]
+             (if (zero? n)
+               result
+               (recur (bag-conj result elem) (dec n))))))
+       (empty-bag opts)
+       all-elements))))
 
 ;; === Сравнение ===
 
-(defn bag-equals? 
+(defn bag-equals?
   "Эффективное сравнение двух bags"
   [bag1 bag2]
-  (and 
-    (= (count-elements bag1) (count-elements bag2))
-    (= (distinct-count bag1) (distinct-count bag2))
-    (let [unique1 (bag-distinct-seq bag1)]
-      (every? (fn [elem] 
-                (= (get-count bag1 elem) (get-count bag2 elem))) 
-              unique1))))
+  (and
+   (= (count-elements bag1) (count-elements bag2))
+   (= (distinct-count bag1) (distinct-count bag2))
+   (let [unique1 (bag-distinct-seq bag1)]
+     (every? (fn [elem]
+               (= (get-count bag1 elem) (get-count bag2 elem)))
+             unique1))))
 
 ;; === Утилиты ===
 
-(defn bag-frequencies 
+(defn bag-frequencies
   "Возвращает map с частотами элементов"
   [sc-bag]
   (if (instance? SCBag sc-bag)
-    (reduce-left (fn [acc elem] 
-                   (update acc elem (fnil inc 0))) 
+    (reduce-left (fn [acc elem]
+                   (update acc elem (fnil inc 0)))
                  {} sc-bag)
     ;; Если передан не SCBag, используем стандартную frequencies
     (frequencies sc-bag)))

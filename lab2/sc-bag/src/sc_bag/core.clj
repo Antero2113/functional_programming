@@ -1,12 +1,12 @@
 (ns sc-bag.core
   "Реализация Bag (multiset) на основе Separate Chaining Hashmap")
 
-;; === Внутреннее представление ===
+;; Внутреннее представление 
 
 (defrecord Node [key count next])
 (defrecord SCBag [buckets size hash-fn eq-fn load-factor])
 
-;; === Вспомогательные функции ===
+;; Вспомогательные функции
 
 (defn- hash-bucket [key num-buckets hash-fn]
   (-> (hash-fn key)
@@ -115,7 +115,7 @@
       (and (pos? old-count) (zero? new-count)) -1  ;; Удален элемент
       :else 0)))                                   ;; Без изменений
 
-;; === Функции высшего порядка (должны быть определены до их использования) ===
+;; Функции высшего порядка (должны быть определены до их использования) 
 
 (defn reduce-left
   "Левая свертка"
@@ -145,7 +145,7 @@
   (let [elements (reduce-left (fn [acc elem] (conj acc elem)) [] sc-bag)]
     (reduce f init (rseq elements))))
 
-;; === Основной API ===
+;; Основной API 
 
 (defn empty-bag
   "Создает пустой bag"
@@ -244,7 +244,7 @@
     ;; Если передан не SCBag, считаем это обычной коллекцией
     (count (distinct sc-bag))))
 
-;; === Функции высшего порядка ===
+;; Функции высшего порядка 
 
 (defn bag-filter
   "Фильтрация элементов bag"
@@ -272,7 +272,7 @@
     ;; Если передан не SCBag, маппим как обычную коллекцию
     (map f sc-bag)))
 
-;; === Интерфейс Seqable ===
+;; Интерфейс Seqable 
 
 (defn bag-seq
   "Последовательность всех элементов (с учетом кратности)"
@@ -290,7 +290,7 @@
     ;; Если передан не SCBag, возвращаем уникальные элементы
     (distinct sc-bag)))
 
-;; === Моноидные операции ===
+;; Моноидные операции
 
 (defn bag-union
   "Объединение двух bags (моноидная операция)"
@@ -317,7 +317,7 @@
        (empty-bag opts)
        all-elements))))
 
-;; === Сравнение ===
+;; Сравнение
 
 (defn bag-equals?
   "Эффективное сравнение двух bags"
@@ -330,7 +330,7 @@
                (= (get-count bag1 elem) (get-count bag2 elem)))
              unique1))))
 
-;; === Утилиты ===
+;; Утилиты
 
 (defn bag-frequencies
   "Возвращает map с частотами элементов"
@@ -348,7 +348,7 @@
 (defn bag->string [sc-bag]
   (str "#Bag" (bag-frequencies sc-bag)))
 
-;; === Утилиты для вывода ===
+;; Утилиты для вывода 
 
 (defmethod print-method SCBag [bag writer]
   (.write writer (bag->string bag)))

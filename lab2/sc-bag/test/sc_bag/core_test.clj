@@ -5,7 +5,7 @@
             [clojure.test.check.clojure-test :refer [defspec]]
             [sc-bag.core :refer :all]))
 
-;; === Unit Tests ===
+;; Unit Tests
 
 (deftest basic-operations-test
   (testing "Создание пустого bag"
@@ -126,7 +126,7 @@
       (is (bag-equals? empty-b empty-b))
       (is (not (bag-equals? b1 empty-b))))))
 
-;; === Property-based Tests ===
+;; Property-based Tests
 
 (def element-gen (gen/one-of [gen/int gen/boolean gen/keyword]))
 (def small-vector-gen (gen/vector element-gen 0 5))
@@ -162,15 +162,3 @@
                   (if (some #(= % elem) v)
                     (bag-equals? b1 (bag-disj b2 elem))
                     (= (get-count b1 elem) (dec (get-count b2 elem)))))))
-
-(comment
-  ;; Примеры использования в REPL
-  (let [b (bag [1 2 2 3 3 3])]
-    (println "Bag:" b)
-    (println "Vector:" (bag->vector b))
-    (println "Frequencies:" (bag-frequencies b))
-    (println "Count of 2:" (get-count b 2))
-    (println "Distinct elements:" (bag-distinct-seq b)))
-
-  ;; Запуск тестов
-  (run-tests 'sc-bag.core-test))

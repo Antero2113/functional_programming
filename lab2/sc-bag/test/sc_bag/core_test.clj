@@ -285,7 +285,8 @@
 
 (defspec bag-disj-consistency 50
   (prop/for-all [b non-empty-bag-gen]
-                (let [elem (first (bag-distinct-seq b))
+                (let [distinct-elems (bag-distinct-seq b)
+                      elem (first distinct-elems)
                       b-after-disj (bag-disj b elem)
                       cnt-before (get-count b elem)]
                   (if (> cnt-before 1)
@@ -353,3 +354,26 @@
                        (not (bag-contains? empty-b elem))
                        (empty? (bag-seq empty-b))
                        (empty? (bag-distinct-seq empty-b))))))
+
+;; Исправление ошибок линтера в property-based тестах
+
+(defspec bag-disj-first-element 50
+  (prop/for-all [b non-empty-bag-gen]
+                (let [distinct-elements (seq (bag-distinct-seq b))
+                      first-elem (first distinct-elements)
+                      b-after-disj (bag-disj b first-elem)
+                      original-count (get-count b first-elem)]
+                  (if (> original-count 1)
+                    (= (dec original-count) (get-count b-after-disj first-elem))
+                    (not (contains? b-after-disj first-elem))))))
+
+(defspec bag-union-frequencies 50
+  (prop/for-all [b1 bag-gen
+                 b2 bag-gen]
+                (let [union-bag (bag-union b1 b2)
+                      all-elements (concat (bag-seq b1) (bag-seq b2))
+                      expected-frequencies (frequencies all-elements)]
+                  
+                  (every? (fn [[elem expected-count]]
+                            (= expected-count (get-count union-bag elem)))
+                          expected-frequencies))))

@@ -82,6 +82,40 @@
         (is (= 2 (get freqs 2)))
         (is (= 1 (get freqs 3)))))))
 
+(deftest seq-functions-test
+  (testing "bag-seq возвращает seqable коллекцию"
+    (let [b (bag [1 2 3])
+          result (bag-seq b)]
+      (is (seqable? result))
+      (is (not (integer? result)))
+      (is (= 3 (count result)))))
+
+  (testing "bag-distinct-seq возвращает seqable коллекцию"
+    (let [b (bag [1 2 2 3])
+          result (bag-distinct-seq b)]
+      (is (seqable? result))
+      (is (not (integer? result)))
+      (is (= 3 (count result)))))
+
+  (testing "count-elements возвращает число, а не коллекцию"
+    (let [b (bag [1 2 3])
+          result (count-elements b)]
+      (is (integer? result))
+      (is (not (seqable? result)))))
+
+  (testing "bag-contains? возвращает boolean"
+    (let [b (bag [1 2 3])
+          result (bag-contains? b 2)]
+      (is (boolean? result))
+      (is (not (seqable? result)))))
+
+  (testing "Функции работают корректно с обычными коллекциями"
+    (let [coll [1 2 2 3]]
+      (is (seqable? (bag-seq coll)))
+      (is (= 4 (count-elements coll)))
+      (is (bag-contains? coll 2))
+      (is (not (bag-contains? coll 4))))))
+
 (deftest monoid-test
   (testing "Моноидные свойства"
     (let [empty-b (empty-bag)
@@ -126,6 +160,73 @@
       (is (bag-equals? empty-b empty-b))
       (is (not (bag-equals? b1 empty-b))))))
 
+(deftest collection-interfaces-test
+  (testing "Интерфейс Seqable"
+    (let [b (bag [1 2 3 2])]
+      (is (seqable? b))
+      (is (seq b))
+      (is (= 4 (count (seq b))))
+      ;; Порядок элементов может быть разным, проверяем через frequencies
+      (is (= {1 1, 2 2, 3 1} (frequencies (seq b))))))
+
+  (testing "Интерфейс IPersistentCollection"
+    (let [b (bag [1 2 3])]
+      (is (= 3 (count b)))
+      ;; cons на bag возвращает bag (реализация IPersistentCollection)
+      (let [b-with-4 (cons b 4)]
+        (is (= 4 (count b-with-4))))
+      (is (empty? (empty b)))
+      (is (not (empty? b)))
+      (is (= b (bag [3 1 2])))
+      (is (not (= b (bag [1 2 3 4]))))))
+
+  (testing "Интерфейс ILookup"
+    (let [b (bag [1 2 2 3])]
+      (is (= 1 (get b 1)))
+      (is (= 2 (get b 2)))
+      (is (= 1 (get b 3)))
+      (is (= 0 (get b 4)))
+      (is (= :not-found (get b 5 :not-found)))
+      ;; Для работы с bag как функцией
+      (is (= 2 (b 2)))
+      (is (= :not-found (b 5 :not-found)))
+      ;; Проверяем, что доступ к полям записи все еще работает
+      (is (some? (get b :buckets)))
+      (is (some? (get b :size)))))
+
+  (testing "Интерфейс Associative"
+    (let [b (bag [1 2 3])]
+      (is (contains? b 1))
+      (is (contains? b 2))
+      (is (not (contains? b 4)))
+      ;; Проверяем, что доступ к полям записи все еще работает
+      (is (contains? b :buckets))
+      (is (contains? b :size))
+      ;; Для работы с entryAt
+      (let [entry (find b 2)]
+        (is (some? entry))
+        (is (= 2 (key entry)))
+        (is (= 1 (val entry))))
+      ;; Для добавления элементов используем cons
+      ;; cons на bag возвращает bag (реализация IPersistentCollection)
+      (let [b2 (cons b 4)]
+        (is (= 1 (get b2 4))))
+      ;; cons на bag возвращает bag (реализация IPersistentCollection)
+      (let [b3 (loop [result b n 2]
+                 (if (zero? n)
+                   result
+                   (recur (cons result 1) (dec n))))]
+        (is (= 3 (get b3 1))))))
+
+  (testing "Работа со стандартными функциями Clojure"
+    (let [b (bag [1 2 3 2 1])]
+      (is (= 5 (count b)))
+      (is (= 3 (count (distinct b))))
+      (is (some #{2} b))
+      (is (every? integer? b))
+      (is (= #{1 2 3} (set b)))
+      (is (= [1 1 2 2 3] (sort (seq b)))))))
+
 ;; Property-based Tests
 
 (def element-gen (gen/one-of [gen/int gen/boolean gen/keyword]))
@@ -139,6 +240,18 @@
 (def non-empty-bag-gen
   (gen/let [elements (gen/vector element-gen 1 10)]
     (reduce bag-conj (empty-bag) elements)))
+
+(defspec bag-seq-returns-seqable 50
+  (prop/for-all [b bag-gen]
+                (let [result (bag-seq b)]
+                  (and (seqable? result)
+                       (not (integer? result))))))
+
+(defspec bag-distinct-seq-returns-seqable 50
+  (prop/for-all [b bag-gen]
+                (let [result (bag-distinct-seq b)]
+                  (and (seqable? result)
+                       (not (integer? result))))))
 
 (defspec monoid-associativity 50
   (prop/for-all [b1 bag-gen
@@ -182,81 +295,6 @@
                       expected-elements (map inc all-elements)]
                   (bag-equals? mapped (reduce bag-conj (empty-bag) expected-elements)))))
 
-;; Тесты для интерфейсов стандартных коллекций
-
-(deftest seqable-interface-test
-  (testing "Интерфейс Seqable"
-    (let [b (bag [1 2 3 2])]
-      (is (seqable? b))
-      (is (seq b))
-      (is (= 4 (count (seq b))))
-      ;; Порядок элементов может быть разным, проверяем через frequencies
-      (is (= {1 1, 2 2, 3 1} (frequencies (seq b)))))))
-
-(deftest collection-interface-test
-  (testing "Интерфейс IPersistentCollection"
-    (let [b (bag [1 2 3])]
-      (is (= 3 (count b)))
-      ;; cons на bag возвращает bag (реализация IPersistentCollection)
-      (let [b-with-4 (cons b 4)]
-        (is (= 4 (count b-with-4))))
-      (is (empty? (empty b)))
-      (is (not (empty? b)))
-      (is (= b (bag [3 1 2])))
-      (is (not (= b (bag [1 2 3 4])))))))
-
-(deftest lookup-interface-test
-  (testing "Интерфейс ILookup"
-    (let [b (bag [1 2 2 3])]
-      (is (= 1 (get b 1)))
-      (is (= 2 (get b 2)))
-      (is (= 1 (get b 3)))
-      (is (= 0 (get b 4)))
-      (is (= :not-found (get b 5 :not-found)))
-      ;; Для работы с bag как функцией
-      (is (= 2 (b 2)))
-      (is (= :not-found (b 5 :not-found)))
-      ;; Проверяем, что доступ к полям записи все еще работает
-      (is (some? (get b :buckets)))
-      (is (some? (get b :size))))))
-
-(deftest associative-interface-test
-  (testing "Интерфейс Associative"
-    (let [b (bag [1 2 3])]
-      (is (contains? b 1))
-      (is (contains? b 2))
-      (is (not (contains? b 4)))
-      ;; Проверяем, что доступ к полям записи все еще работает
-      (is (contains? b :buckets))
-      (is (contains? b :size))
-      ;; Для работы с entryAt
-      (let [entry (find b 2)]
-        (is (some? entry))
-        (is (= 2 (key entry)))
-        (is (= 1 (val entry))))
-      ;; Для добавления элементов используем cons
-      ;; cons на bag возвращает bag (реализация IPersistentCollection)
-      (let [b2 (cons b 4)]
-        (is (= 1 (get b2 4))))
-      ;; cons на bag возвращает bag (реализация IPersistentCollection)
-      (let [b3 (loop [result b n 2]
-                 (if (zero? n)
-                   result
-                   (recur (cons result 1) (dec n))))]
-        (is (= 3 (get b3 1)))))))
-
-(deftest standard-functions-test
-  (testing "Работа со стандартными функциями Clojure"
-    (let [b (bag [1 2 3 2 1])]
-      (is (= 5 (count b)))
-      (is (= 3 (count (distinct b))))
-      (is (some #{2} b))
-      (is (every? integer? b))
-      (is (= #{1 2 3} (set b)))
-      (is (= [1 1 2 2 3] (sort (seq b)))))))
-
-;; Property-based тесты с генератором bag-ов
-
 (defspec bag-generator-test 50
   (prop/for-all [b bag-gen]
                 (and (>= (count-elements b) 0)
@@ -293,36 +331,6 @@
                     (= (dec cnt-before) (get-count b-after-disj elem))
                     (not (bag-contains? b-after-disj elem))))))
 
-;; Тесты для исправления ошибок линтера
-
-(deftest lint-fixes-test
-  (testing "bag-seq возвращает seqable коллекцию"
-    (let [b (bag [1 2 3])
-          result (bag-seq b)]
-      (is (seqable? result))
-      (is (not (integer? result)))))
-
-  (testing "count-elements возвращает число, а не коллекцию"
-    (let [b (bag [1 2 3])
-          result (count-elements b)]
-      (is (integer? result))
-      (is (not (seqable? result)))))
-
-  (testing "bag-contains? возвращает boolean"
-    (let [b (bag [1 2 3])
-          result (bag-contains? b 2)]
-      (is (boolean? result))
-      (is (not (seqable? result)))))
-
-  (testing "Функции работают корректно с обычными коллекциями"
-    (let [coll [1 2 2 3]]
-      (is (seqable? (bag-seq coll)))
-      (is (= 4 (count-elements coll)))
-      (is (bag-contains? coll 2))
-      (is (not (bag-contains? coll 4))))))
-
-;; Дополнительные тесты для проверки специфичных свойств bag
-
 (defspec bag-unique-properties 50
   (prop/for-all [elements (gen/vector element-gen 0 15)]
                 (let [b (reduce bag-conj (empty-bag) elements)
@@ -355,8 +363,6 @@
                        (empty? (bag-seq empty-b))
                        (empty? (bag-distinct-seq empty-b))))))
 
-;; Исправление ошибок линтера в property-based тестах
-
 (defspec bag-disj-first-element 50
   (prop/for-all [b non-empty-bag-gen]
                 (let [distinct-elements (bag-distinct-seq b)
@@ -377,3 +383,54 @@
                   (every? (fn [[elem expected-count]]
                             (= expected-count (get-count union-bag elem)))
                           expected-frequencies))))
+
+;; Edge cases and special scenarios
+
+(deftest edge-cases-test
+  (testing "Работа с nil значениями"
+    (let [b (bag [nil 1 nil 2])]
+      (is (= 4 (count-elements b)))
+      (is (= 3 (distinct-count b)))
+      (is (= 2 (get-count b nil)))))
+
+  (testing "Работа с большим количеством элементов"
+    (let [elements (repeat 100 :a)
+          b (bag elements)]
+      (is (= 100 (count-elements b)))
+      (is (= 1 (distinct-count b)))
+      (is (= 100 (get-count b :a)))))
+
+  (testing "Работа с различными типами данных"
+    (let [b (bag [1 :a "string" true false nil 1 :a])]
+      (is (= 8 (count-elements b)))
+      (is (= 6 (distinct-count b)))
+      (is (= 2 (get-count b 1)))
+      (is (= 2 (get-count b :a)))
+      (is (= 1 (get-count b "string")))))
+
+  (testing "Множественное удаление элементов"
+    (let [b (-> (empty-bag)
+                (bag-conj :a)
+                (bag-conj :a)
+                (bag-conj :a)
+                (bag-disj :a)
+                (bag-disj :a))]
+      (is (= 1 (count-elements b)))
+      (is (= 1 (distinct-count b)))
+      (is (= 1 (get-count b :a))))))
+
+;; Performance and stress tests
+
+(deftest performance-test
+  (testing "Создание bag из большой коллекции"
+    (let [large-coll (range 1000)
+          b (bag large-coll)]
+      (is (= 1000 (count-elements b)))
+      (is (= 1000 (distinct-count b)))))
+
+  (testing "Множественные операции добавления/удаления"
+    (let [b (reduce bag-conj (empty-bag) (range 100))]
+      (is (= 100 (count-elements b)))
+      (let [b' (reduce bag-disj b (range 50))]
+        (is (= 50 (count-elements b')))
+        (is (= 100 (distinct-count b')))))))

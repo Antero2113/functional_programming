@@ -17,12 +17,12 @@
   (seq [this]
     (let [s (bag-seq this)]
       (if (empty? s) nil s)))
-  
+
   ;; Counted - для работы с count
   clojure.lang.Counted
   (count [this]
     (count-elements this))
-  
+
   ;; IPersistentCollection - для работы с cons, empty, equiv
   clojure.lang.IPersistentCollection
   (cons [this o]
@@ -33,7 +33,7 @@
     (if (instance? SCBag o)
       (bag-equals? this o)
       false))
-  
+
   ;; ILookup - для работы с get
   clojure.lang.ILookup
   (valAt [this key]
@@ -61,7 +61,7 @@
         (if (zero? cnt)
           not-found
           cnt))))
-  
+
   ;; IFn - для вызова bag как функции
   clojure.lang.IFn
   (invoke [this key]
@@ -71,7 +71,7 @@
       (if (zero? cnt)
         not-found
         cnt)))
-  
+
   ;; Associative - для работы с contains?, find
   clojure.lang.Associative
   (containsKey [this key]
@@ -93,7 +93,6 @@
         (if (pos? cnt)
           (clojure.lang.MapEntry. key cnt)
           nil)))))
-
 
 ;; Вспомогательные функции
 
@@ -385,16 +384,16 @@
                  (let [bucket (get buckets idx)]
                    (if (nil? bucket)
                      (walk-buckets buckets (inc idx))
-                    (letfn [(walk-nodes [node]
-                              (lazy-seq
-                               (when node
-                                 (let [key (:key node)
-                                       cnt (:count node)]
-                                   (if (pos? cnt)
+                     (letfn [(walk-nodes [node]
+                               (lazy-seq
+                                (when node
+                                  (let [key (:key node)
+                                        cnt (:count node)]
+                                    (if (pos? cnt)
                                      ;; Повторяем элемент cnt раз
-                                     (concat (repeat cnt key)
-                                             (walk-nodes (:next node)))
-                                     (walk-nodes (:next node)))))))]
+                                      (concat (repeat cnt key)
+                                              (walk-nodes (:next node)))
+                                      (walk-nodes (:next node)))))))]
                        (concat (walk-nodes bucket)
                                (walk-buckets buckets (inc idx)))))))))]
       (walk-buckets (.buckets sc-bag) 0))

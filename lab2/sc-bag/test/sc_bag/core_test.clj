@@ -189,48 +189,48 @@
       (is (= b (bag [3 1 2])))
       (is (not (= b (bag [1 2 3 4])))))
 
-  (testing "Интерфейс ILookup"
-    (let [b (bag [1 2 2 3])]
+    (testing "Интерфейс ILookup"
+      (let [b (bag [1 2 2 3])]
       ;; Теперь get работает для элементов bag (ILookup реализован через deftype)
-      (is (= 1 (get b 1)))
-      (is (= 2 (get b 2)))
-      (is (= 1 (get b 3)))
-      (is (= 0 (get b 4)))
-      (is (= :not-found (get b 5 :not-found)))
+        (is (= 1 (get b 1)))
+        (is (= 2 (get b 2)))
+        (is (= 1 (get b 3)))
+        (is (= 0 (get b 4)))
+        (is (= :not-found (get b 5 :not-found)))
       ;; Также работает вызов bag как функции
-      (is (= 2 (b 2)))
-      (is (= :not-found (b 5 :not-found)))
+        (is (= 2 (b 2)))
+        (is (= :not-found (b 5 :not-found)))
       ;; Проверяем доступ к полям записи через get
-      (is (some? (get b :buckets)))
-      (is (some? (get b :size)))))
+        (is (some? (get b :buckets)))
+        (is (some? (get b :size)))))
 
-  (testing "Интерфейс Associative"
-    (let [b (bag [1 2 3])]
-      (is (contains? b 1))
-      (is (contains? b 2))
-      (is (not (contains? b 4)))
-      (let [entry (find b 2)]
-        (is (some? entry))
-        (is (= 2 (key entry)))
-        (is (= 1 (val entry))))
-      (let [b2 (bag-conj b 4)]
-        (is (= 1 (get b2 4))))
-      (let [b3 (loop [result b n 2]
-                 (if (zero? n)
-                   result
-                   (recur (bag-conj result 1) (dec n))))]
-        (is (= 3 (get b3 1))))))
+    (testing "Интерфейс Associative"
+      (let [b (bag [1 2 3])]
+        (is (contains? b 1))
+        (is (contains? b 2))
+        (is (not (contains? b 4)))
+        (let [entry (find b 2)]
+          (is (some? entry))
+          (is (= 2 (key entry)))
+          (is (= 1 (val entry))))
+        (let [b2 (bag-conj b 4)]
+          (is (= 1 (get b2 4))))
+        (let [b3 (loop [result b n 2]
+                   (if (zero? n)
+                     result
+                     (recur (bag-conj result 1) (dec n))))]
+          (is (= 3 (get b3 1))))))
 
-  (testing "Работа со стандартными функциями Clojure"
-    (let [b (bag [1 2 3 2 1])]
+    (testing "Работа со стандартными функциями Clojure"
+      (let [b (bag [1 2 3 2 1])]
       ;; Теперь все стандартные функции Clojure работают для bag
-      (is (= 5 (count b)))
+        (is (= 5 (count b)))
       ;; distinct требует nth, используем bag-distinct-seq
-      (is (= 3 (count (bag-distinct-seq b))))
-      (is (some #{2} b))
-      (is (every? integer? b))
-      (is (= #{1 2 3} (set b)))
-      (is (= [1 1 2 2 3] (sort (seq b))))))))
+        (is (= 3 (count (bag-distinct-seq b))))
+        (is (some #{2} b))
+        (is (every? integer? b))
+        (is (= #{1 2 3} (set b)))
+        (is (= [1 1 2 2 3] (sort (seq b))))))))
 
 ;; Property-based Tests
 
@@ -334,7 +334,7 @@
                 (let [b (reduce bag-conj (empty-bag) elements)
                       distinct-elems (seq (bag-distinct-seq b))  ;; Явно преобразуем в seq
                       frequencies-map (bag-frequencies b)]
-                  
+
                   (and
                    (= (count distinct-elems) (distinct-count b))
                    (= (count-elements b) (reduce + (vals frequencies-map)))
@@ -370,7 +370,7 @@
                 (let [union-bag (bag-union b1 b2)
                       all-elements (concat (seq b1) (seq b2))  ;; Используем seq, так как Seqable реализован через deftype
                       expected-frequencies (frequencies all-elements)]
-                  
+
                   (every? (fn [[elem expected-count]]
                             (= expected-count (get-count union-bag elem)))
                           expected-frequencies))))

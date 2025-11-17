@@ -1,10 +1,90 @@
 (ns sc-bag.core
-  "Реализация Bag (multiset) на основе Separate Chaining Hashmap")
+  "Реализация Bag (multiset) на основе Separate Chaining Hashmap"
+  (:import [clojure.lang Seqable IPersistentCollection Counted ILookup IFn Associative]))
 
 ;; Внутреннее представление 
 
 (defrecord Node [key count next])
-(defrecord SCBag [buckets size hash-fn eq-fn load-factor])
+
+;; Forward declarations для функций, используемых в методах интерфейсов
+(declare bag-seq count-elements bag-conj empty-bag bag-equals? get-count bag-contains?)
+
+;; Определяем SCBag с реализацией интерфейсов для работы с элементами bag
+(defrecord SCBag [buckets size hash-fn eq-fn load-factor]
+  clojure.lang.Seqable
+  (seq [this]
+    (seq (bag-seq this)))
+  
+  clojure.lang.Counted
+  (count [this]
+    (count-elements this))
+  
+  clojure.lang.IPersistentCollection
+  (cons [this o]
+    (bag-conj this o))
+  (empty [this]
+    (empty-bag {:hash-fn (:hash-fn this) :eq-fn (:eq-fn this) :load-factor (:load-factor this)}))
+  (equiv [this o]
+    (if (instance? SCBag o)
+      (bag-equals? this o)
+      false))
+  
+  clojure.lang.ILookup
+  (valAt [this key]
+    ;; Если key - это ключевое слово (поле записи), используем прямое обращение
+    (if (keyword? key)
+      (case key
+        :buckets (:buckets this)
+        :size (:size this)
+        :hash-fn (:hash-fn this)
+        :eq-fn (:eq-fn this)
+        :load-factor (:load-factor this)
+        nil)
+      ;; Иначе работаем с элементами bag
+      (get-count this key)))
+  (valAt [this key not-found]
+    (if (keyword? key)
+      (case key
+        :buckets (:buckets this)
+        :size (:size this)
+        :hash-fn (:hash-fn this)
+        :eq-fn (:eq-fn this)
+        :load-factor (:load-factor this)
+        not-found)
+      (let [cnt (get-count this key)]
+        (if (zero? cnt)
+          not-found
+          cnt))))
+  
+  clojure.lang.IFn
+  (invoke [this key]
+    (get-count this key))
+  (invoke [this key not-found]
+    (let [cnt (get-count this key)]
+      (if (zero? cnt)
+        not-found
+        cnt)))
+  
+  clojure.lang.Associative
+  (containsKey [this key]
+    ;; Если key - это ключевое слово (поле записи), проверяем напрямую
+    (if (keyword? key)
+      (contains? #{:buckets :size :hash-fn :eq-fn :load-factor} key)
+      ;; Иначе работаем с элементами bag
+      (bag-contains? this key)))
+  (entryAt [this key]
+    (if (keyword? key)
+      (case key
+        :buckets (clojure.lang.MapEntry. :buckets (:buckets this))
+        :size (clojure.lang.MapEntry. :size (:size this))
+        :hash-fn (clojure.lang.MapEntry. :hash-fn (:hash-fn this))
+        :eq-fn (clojure.lang.MapEntry. :eq-fn (:eq-fn this))
+        :load-factor (clojure.lang.MapEntry. :load-factor (:load-factor this))
+        nil)
+      (let [cnt (get-count this key)]
+        (if (pos? cnt)
+          (clojure.lang.MapEntry. key cnt)
+          nil)))))
 
 ;; Вспомогательные функции
 
@@ -145,7 +225,9 @@
   (let [elements (reduce-left (fn [acc elem] (conj acc elem)) [] sc-bag)]
     (reduce f init (rseq elements))))
 
-;; Основной API 
+;; ============================================================================
+;; API SCBag - Специфичные функции для работы с bag
+;; ============================================================================
 
 (defn empty-bag
   "Создает пустой bag"
@@ -200,52 +282,6 @@
         (assoc :buckets (assoc buckets bucket-idx new-bucket))
         (update :size + (bucket-size-change current-bucket new-bucket element eq-fn)))))
 
-(defn get-count
-  "Возвращает количество вхождений элемента"
-  [sc-bag element]
-  (if (instance? SCBag sc-bag)
-    (let [hash-fn (:hash-fn sc-bag)
-          eq-fn (:eq-fn sc-bag)
-          buckets (:buckets sc-bag)
-          bucket-idx (hash-bucket element (count buckets) hash-fn)
-          bucket (get buckets bucket-idx)]
-      (loop [current bucket]
-        (cond
-          (nil? current) 0
-          (eq-fn (:key current) element) (:count current)
-          :else (recur (:next current)))))
-    ;; Если передан не SCBag, считаем это обычной коллекцией
-    (get (frequencies sc-bag) element 0)))
-
-(defn bag-contains?
-  "Проверяет наличие элемента в bag"
-  [sc-bag element]
-  (> (get-count sc-bag element) 0))
-
-(defn count-elements
-  "Общее количество элементов (с учетом кратности)"
-  [sc-bag]
-  (if (instance? SCBag sc-bag)
-    (reduce + (for [bucket (:buckets sc-bag)
-                    :when bucket]
-                (loop [current bucket
-                       total 0]
-                  (if current
-                    (recur (:next current) (+ total (:count current)))
-                    total))))
-    ;; Если передан не SCBag, считаем это обычной коллекцией
-    (count sc-bag)))
-
-(defn distinct-count
-  "Количество уникальных элементов"
-  [sc-bag]
-  (if (instance? SCBag sc-bag)
-    (:size sc-bag)
-    ;; Если передан не SCBag, считаем это обычной коллекцией
-    (count (distinct sc-bag))))
-
-;; Функции высшего порядка 
-
 (defn bag-filter
   "Фильтрация элементов bag"
   [pred sc-bag]
@@ -272,10 +308,62 @@
     ;; Если передан не SCBag, маппим как обычную коллекцию
     (map f sc-bag)))
 
-;; Интерфейс Seqable 
+;; ============================================================================
+;; Интеграция со стандартными коллекциями Clojure
+;; Функции, которые работают как с SCBag, так и с обычными коллекциями
+;; ============================================================================
+
+(defn get-count
+  "Возвращает количество вхождений элемента.
+   Работает как с SCBag, так и с обычными коллекциями Clojure."
+  [sc-bag element]
+  (if (instance? SCBag sc-bag)
+    (let [hash-fn (:hash-fn sc-bag)
+          eq-fn (:eq-fn sc-bag)
+          buckets (:buckets sc-bag)
+          bucket-idx (hash-bucket element (count buckets) hash-fn)
+          bucket (get buckets bucket-idx)]
+      (loop [current bucket]
+        (cond
+          (nil? current) 0
+          (eq-fn (:key current) element) (:count current)
+          :else (recur (:next current)))))
+    ;; Если передан не SCBag, считаем это обычной коллекцией
+    (get (frequencies sc-bag) element 0)))
+
+(defn bag-contains?
+  "Проверяет наличие элемента в bag.
+   Работает как с SCBag, так и с обычными коллекциями Clojure."
+  [sc-bag element]
+  (> (get-count sc-bag element) 0))
+
+(defn count-elements
+  "Общее количество элементов (с учетом кратности).
+   Работает как с SCBag, так и с обычными коллекциями Clojure."
+  [sc-bag]
+  (if (instance? SCBag sc-bag)
+    (reduce + (for [bucket (:buckets sc-bag)
+                    :when bucket]
+                (loop [current bucket
+                       total 0]
+                  (if current
+                    (recur (:next current) (+ total (:count current)))
+                    total))))
+    ;; Если передан не SCBag, считаем это обычной коллекцией
+    (count sc-bag)))
+
+(defn distinct-count
+  "Количество уникальных элементов.
+   Работает как с SCBag, так и с обычными коллекциями Clojure."
+  [sc-bag]
+  (if (instance? SCBag sc-bag)
+    (:size sc-bag)
+    ;; Если передан не SCBag, считаем это обычной коллекцией
+    (count (distinct sc-bag))))
 
 (defn bag-seq
-  "Последовательность всех элементов (с учетом кратности)"
+  "Последовательность всех элементов (с учетом кратности).
+   Работает как с SCBag, так и с обычными коллекциями Clojure."
   [sc-bag]
   (if (instance? SCBag sc-bag)
     (reduce-left (fn [acc elem] (conj acc elem)) [] sc-bag)
@@ -283,17 +371,28 @@
     sc-bag))
 
 (defn bag-distinct-seq
-  "Последовательность уникальных элементов"
+  "Последовательность уникальных элементов.
+   Работает как с SCBag, так и с обычными коллекциями Clojure."
   [sc-bag]
   (if (instance? SCBag sc-bag)
     (reduce-left (fn [acc elem] (conj acc elem)) #{} sc-bag)
     ;; Если передан не SCBag, возвращаем уникальные элементы
     (distinct sc-bag)))
 
-;; Моноидные операции
+(defn bag-frequencies
+  "Возвращает map с частотами элементов.
+   Работает как с SCBag, так и с обычными коллекциями Clojure."
+  [sc-bag]
+  (if (instance? SCBag sc-bag)
+    (reduce-left (fn [acc elem]
+                   (update acc elem (fnil inc 0)))
+                 {} sc-bag)
+    ;; Если передан не SCBag, используем стандартную frequencies
+    (frequencies sc-bag)))
 
 (defn bag-union
-  "Объединение двух bags (моноидная операция)"
+  "Объединение двух bags (моноидная операция).
+   Работает как с SCBag, так и с обычными коллекциями Clojure."
   [bag1 bag2]
   (let [all-elements (into #{} (concat (bag-seq bag1) (bag-seq bag2)))
         ;; Используем параметры из bag1, если он не пустой, иначе из bag2
@@ -317,10 +416,9 @@
        (empty-bag opts)
        all-elements))))
 
-;; Сравнение
-
 (defn bag-equals?
-  "Эффективное сравнение двух bags"
+  "Эффективное сравнение двух bags.
+   Работает как с SCBag, так и с обычными коллекциями Clojure."
   [bag1 bag2]
   (and
    (= (count-elements bag1) (count-elements bag2))
@@ -330,17 +428,9 @@
                (= (get-count bag1 elem) (get-count bag2 elem)))
              unique1))))
 
+;; ============================================================================
 ;; Утилиты
-
-(defn bag-frequencies
-  "Возвращает map с частотами элементов"
-  [sc-bag]
-  (if (instance? SCBag sc-bag)
-    (reduce-left (fn [acc elem]
-                   (update acc elem (fnil inc 0)))
-                 {} sc-bag)
-    ;; Если передан не SCBag, используем стандартную frequencies
-    (frequencies sc-bag)))
+;; ============================================================================
 
 (defn bag->vector [sc-bag]
   (vec (bag-seq sc-bag)))
@@ -348,7 +438,52 @@
 (defn bag->string [sc-bag]
   (str "#Bag" (bag-frequencies sc-bag)))
 
-;; Утилиты для вывода 
-
 (defmethod print-method SCBag [bag writer]
   (.write writer (bag->string bag)))
+
+;; ============================================================================
+;; Реализация интерфейсов стандартных коллекций Clojure
+;; ============================================================================
+;; 
+;; Интерфейсы реализованы напрямую в defrecord SCBag (строки 13-87).
+;; Все методы интерфейсов работают с ЭЛЕМЕНТАМИ bag, а не с полями записи.
+;; Доступ к полям записи сохраняется через ключевые слова.
+
+;; ============================================================================
+;; Примечания о реализации интерфейсов
+;; ============================================================================
+;;
+;; Все интерфейсы стандартных коллекций Clojure полностью реализованы
+;; для работы с ЭЛЕМЕНТАМИ bag (реализованы напрямую в defrecord SCBag):
+;;
+;; - Seqable: (seq bag) возвращает последовательность элементов bag
+;; - Counted: (count bag) возвращает количество элементов (с учетом кратности)
+;; - IPersistentCollection:
+;;   * (cons bag elem) добавляет элемент в bag
+;;   * (empty bag) создает пустой bag с теми же параметрами
+;;   * (= bag1 bag2) сравнивает bags по элементам через bag-equals?
+;; - ILookup:
+;;   * (get bag elem) возвращает количество вхождений элемента
+;;   * (get bag :field) возвращает значение поля записи (ключевые слова)
+;;   * (bag elem) работает как функция, возвращает количество вхождений
+;; - IFn: bag можно вызывать как функцию для получения количества элементов
+;; - Associative:
+;;   * (contains? bag elem) проверяет наличие элемента
+;;   * (contains? bag :field) проверяет наличие поля записи
+;;   * (find bag elem) возвращает MapEntry с элементом и его количеством
+;;
+;; Примеры использования:
+;;   (let [b (bag [1 2 2 3])]
+;;     (seq b)           ; => последовательность элементов [1 2 2 3]
+;;     (count b)         ; => 4 (количество элементов)
+;;     (get b 2)         ; => 2 (количество вхождений элемента 2)
+;;     (b 2)             ; => 2 (bag как функция)
+;;     (contains? b 2)   ; => true
+;;     (find b 2)        ; => [2 2] (MapEntry)
+;;     (cons b 4)        ; => bag с добавленным элементом 4
+;;     (empty b)         ; => пустой bag
+;;     (= b (bag [2 1 3 2])) ; => true (сравнение по элементам)
+;;     ;; Доступ к полям записи через ключевые слова:
+;;     (get b :size)     ; => 3 (количество уникальных элементов)
+;;     (contains? b :buckets) ; => true
+;;     )

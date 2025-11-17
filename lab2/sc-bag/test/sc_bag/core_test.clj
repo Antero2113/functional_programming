@@ -3,7 +3,7 @@
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [clojure.test.check.clojure-test :refer [defspec]]
-            [sc-bag.core :refer :all]))
+            [sc-bag.core :refer :all :as core]))
 
 ;; Unit Tests
 
@@ -131,6 +131,12 @@
 (def element-gen (gen/one-of [gen/int gen/boolean gen/keyword]))
 (def small-vector-gen (gen/vector element-gen 0 5))
 
+;; Генератор bag-ов напрямую
+(def bag-gen
+  (gen/fmap
+   (fn [v] (bag v))
+   small-vector-gen))
+
 (defspec monoid-associativity 50
   (prop/for-all [v1 small-vector-gen
                  v2 small-vector-gen
@@ -162,3 +168,87 @@
                   (if (some #(= % elem) v)
                     (bag-equals? b1 (bag-disj b2 elem))
                     (= (get-count b1 elem) (dec (get-count b2 elem)))))))
+
+;; Тесты для интерфейсов стандартных коллекций
+
+(deftest seqable-interface-test
+  (testing "Интерфейс Seqable"
+    (let [b (bag [1 2 3 2])]
+      (is (seqable? b))
+      (is (seq b))
+      (is (= 4 (count (seq b))))
+      ;; Порядок элементов может быть разным, проверяем через frequencies
+      (is (= {1 1, 2 2, 3 1} (frequencies (seq b)))))))
+
+(deftest collection-interface-test
+  (testing "Интерфейс IPersistentCollection"
+    (let [b (bag [1 2 3])]
+      (is (= 3 (count b)))
+      (is (= 4 (count (cons b 4))))
+      (is (empty? (empty b)))
+      (is (not (empty? b)))
+      (is (= b (bag [3 1 2])))
+      (is (not (= b (bag [1 2 3 4])))))))
+
+(deftest lookup-interface-test
+  (testing "Интерфейс ILookup"
+    (let [b (bag [1 2 2 3])]
+      (is (= 1 (get b 1)))
+      (is (= 2 (get b 2)))
+      (is (= 1 (get b 3)))
+      (is (= 0 (get b 4)))
+      (is (= :not-found (get b 5 :not-found)))
+      ;; Для работы с bag как функцией
+      (is (= 2 (b 2)))
+      (is (= :not-found (b 5 :not-found)))
+      ;; Проверяем, что доступ к полям записи все еще работает
+      (is (some? (get b :buckets)))
+      (is (some? (get b :size))))))
+
+(deftest associative-interface-test
+  (testing "Интерфейс Associative"
+    (let [b (bag [1 2 3])]
+      (is (contains? b 1))
+      (is (contains? b 2))
+      (is (not (contains? b 4)))
+      ;; Проверяем, что доступ к полям записи все еще работает
+      (is (contains? b :buckets))
+      (is (contains? b :size))
+      ;; Для работы с entryAt
+      (let [entry (find b 2)]
+        (is (some? entry))
+        (is (= 2 (key entry)))
+        (is (= 1 (val entry))))
+      ;; Для добавления элементов используем cons
+      (let [b2 (cons b 4)]
+        (is (= 1 (get b2 4))))
+      (let [b3 (loop [result b n 2]
+                 (if (zero? n)
+                   result
+                   (recur (cons result 1) (dec n))))]
+        (is (= 3 (get b3 1)))))))
+
+(deftest standard-functions-test
+  (testing "Работа со стандартными функциями Clojure"
+    (let [b (bag [1 2 3 2 1])]
+      (is (= 5 (count b)))
+      (is (= 3 (count (distinct b))))
+      (is (some #{2} b))
+      (is (every? integer? b))
+      (is (= #{1 2 3} (set b)))
+      (is (= [1 1 2 2 3] (sort (seq b)))))))
+
+;; Property-based тесты с генератором bag-ов
+
+(defspec bag-generator-test 50
+  (prop/for-all [b bag-gen]
+                (and (>= (count-elements b) 0)
+                     (>= (distinct-count b) 0)
+                     (= (count-elements b) (count-elements b)))))
+
+(defspec bag-interface-consistency 50
+  (prop/for-all [b bag-gen
+                 elem element-gen]
+                (let [cnt (get-count b elem)]
+                  (and (>= cnt 0)
+                       (= (bag-contains? b elem) (pos? cnt))))))

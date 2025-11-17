@@ -7,6 +7,9 @@
   :plugins [[lein-cljfmt "0.9.2"]]
   :main ^:skip-aot sc-bag.core
   :target-path "target/%s"
+  :jvm-opts ["-Xmx96m" "-Xms32m" "-XX:+UseSerialGC"]
   :profiles {:uberjar {:aot :all
                        :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}
-             :dev {:dependencies [[org.clojure/test.check "1.1.1"]]}})
+             :dev {:dependencies [[org.clojure/test.check "1.1.1"]]
+                   :jvm-opts ["-Xmx96m" "-Xms32m" "-XX:+UseSerialGC"]}
+             :test {:jvm-opts ["-Xmx96m" "-Xms32m" "-XX:+UseSerialGC"]}})

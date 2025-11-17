@@ -209,7 +209,7 @@
                  (if (zero? n)
                    result
                    (recur (cons result 1) (dec n))))]
-        (is (= 3 (get b3 1))))))
+        (is (= 3 (get b3 1)))))
 
   (testing "Работа со стандартными функциями Clojure"
     (let [b (bag [1 2 3 2 1])]
@@ -397,4 +397,3 @@
       (is (= 1 (count-elements b)))
       (is (= 1 (distinct-count b)))
       (is (= 1 (get-count b :a))))))
-)

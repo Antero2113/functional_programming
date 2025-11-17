@@ -397,3 +397,4 @@
       (is (= 1 (count-elements b)))
       (is (= 1 (distinct-count b)))
       (is (= 1 (get-count b :a))))))
+)

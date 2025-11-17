@@ -366,20 +366,24 @@
    Работает как с SCBag, так и с обычными коллекциями Clojure."
   [sc-bag]
   (if (instance? SCBag sc-bag)
-    ;; Используем явное создание последовательности через loop/recur
-    (let [result (transient [])]
-      (loop [i 0]
-        (if (>= i (count (:buckets sc-bag)))
-          (persistent! result)
-          (let [bucket (get (:buckets sc-bag) i)]
-            (if (nil? bucket)
-              (recur (inc i))
-              (loop [current bucket]
-                (when current
-                  (dotimes [_ (:count current)]
-                    (conj! result (:key current)))
-                  (recur (:next current)))
-                (recur (inc i)))))))
+    ;; Явно создаем ленивую последовательность
+    (letfn [(walk-buckets [buckets idx]
+              (lazy-seq
+               (when (< idx (count buckets))
+                 (let [bucket (get buckets idx)]
+                   (if (nil? bucket)
+                     (walk-buckets buckets (inc idx))
+                     (letfn [(walk-nodes [node]
+                               (lazy-seq
+                                (when node
+                                  (let [key (:key node)
+                                        count (:count node)]
+                                    (if (pos? count)
+                                      (cons key (walk-nodes (:next node)))
+                                      (walk-nodes (:next node)))))))]
+                       (concat (walk-nodes bucket)
+                               (walk-buckets buckets (inc idx)))))))))]
+      (walk-buckets (:buckets sc-bag) 0))
     ;; Если передан не SCBag, возвращаем как есть
     (seq sc-bag)))
 
@@ -388,19 +392,20 @@
    Работает как с SCBag, так и с обычными коллекциями Clojure."
   [sc-bag]
   (if (instance? SCBag sc-bag)
-    ;; Используем явное создание последовательности через loop/recur
-    (let [result (transient [])]
-      (loop [i 0]
-        (if (>= i (count (:buckets sc-bag)))
-          (persistent! result)
-          (let [bucket (get (:buckets sc-bag) i)]
-            (if (nil? bucket)
-              (recur (inc i))
-              (loop [current bucket]
-                (when current
-                  (conj! result (:key current))
-                  (recur (:next current)))
-                (recur (inc i)))))))
+    ;; Явно создаем ленивую последовательность уникальных элементов
+    (letfn [(walk-buckets [buckets idx]
+              (lazy-seq
+               (when (< idx (count buckets))
+                 (let [bucket (get buckets idx)]
+                   (if (nil? bucket)
+                     (walk-buckets buckets (inc idx))
+                     (letfn [(walk-nodes [node]
+                               (lazy-seq
+                                (when node
+                                  (cons (:key node) (walk-nodes (:next node))))))]
+                       (concat (walk-nodes bucket)
+                               (walk-buckets buckets (inc idx)))))))))]
+      (walk-buckets (:buckets sc-bag) 0))
     ;; Если передан не SCBag, возвращаем уникальные элементы
     (distinct sc-bag)))
 

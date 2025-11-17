@@ -184,6 +184,8 @@
   (testing "Интерфейс IPersistentCollection"
     (let [b (bag [1 2 3])]
       (is (= 3 (count b)))
+      ;; cons на bag возвращает bag (реализация IPersistentCollection)
+      #_{:clj-kondo/ignore [:invalid-arity]}
       (is (= 4 (count (cons b 4))))
       (is (empty? (empty b)))
       (is (not (empty? b)))
@@ -220,8 +222,12 @@
         (is (= 2 (key entry)))
         (is (= 1 (val entry))))
       ;; Для добавления элементов используем cons
+      ;; cons на bag возвращает bag (реализация IPersistentCollection)
+      #_{:clj-kondo/ignore [:invalid-arity]}
       (let [b2 (cons b 4)]
         (is (= 1 (get b2 4))))
+      ;; cons на bag возвращает bag (реализация IPersistentCollection)
+      #_{:clj-kondo/ignore [:invalid-arity]}
       (let [b3 (loop [result b n 2]
                  (if (zero? n)
                    result

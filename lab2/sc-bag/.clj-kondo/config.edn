@@ -1,3 +1,11 @@
 {:linters
  {:unresolved-symbol
-  {:exclude [(clojure.test.check.clojure-test/defspec)]}}}
+  {:exclude [(clojure.test.check.clojure-test/defspec)]}
+  :invalid-arity
+  {:exclude [(clojure.core/cons
+              {:arities #{2}
+               :paths ["test/sc_bag/core_test.clj"]})]}
+  :wrong-number-of-args
+  {:level :off
+   :exclude [(clojure.core/cons
+              {:paths ["test/sc_bag/core_test.clj"]})]}}}

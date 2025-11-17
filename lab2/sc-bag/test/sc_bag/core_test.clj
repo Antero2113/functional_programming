@@ -184,43 +184,43 @@
       (is (= b (bag [3 1 2])))
       (is (not (= b (bag [1 2 3 4])))))
 
-  (testing "Интерфейс ILookup"
-    (let [b (bag [1 2 2 3])]
-      (is (= 1 (get b 1)))
-      (is (= 2 (get b 2)))
-      (is (= 1 (get b 3)))
-      (is (= 0 (get b 4)))
-      (is (= :not-found (get b 5 :not-found)))
-      (is (= 2 (b 2)))
-      (is (= :not-found (b 5 :not-found)))
-      (is (some? (get b :buckets)))
-      (is (some? (get b :size)))))
+    (testing "Интерфейс ILookup"
+      (let [b (bag [1 2 2 3])]
+        (is (= 1 (get b 1)))
+        (is (= 2 (get b 2)))
+        (is (= 1 (get b 3)))
+        (is (= 0 (get b 4)))
+        (is (= :not-found (get b 5 :not-found)))
+        (is (= 2 (b 2)))
+        (is (= :not-found (b 5 :not-found)))
+        (is (some? (get b :buckets)))
+        (is (some? (get b :size)))))
 
-  (testing "Интерфейс Associative"
-    (let [b (bag [1 2 3])]
-      (is (contains? b 1))
-      (is (contains? b 2))
-      (is (not (contains? b 4)))
-      (let [entry (find b 2)]
-        (is (some? entry))
-        (is (= 2 (key entry)))
-        (is (= 1 (val entry))))
-      (let [b2 (bag-conj b 4)]
-        (is (= 1 (get b2 4))))
-      (let [b3 (loop [result b n 2]
-                 (if (zero? n)
-                   result
-                   (recur (bag-conj result 1) (dec n))))]
-        (is (= 3 (get b3 1))))))
+    (testing "Интерфейс Associative"
+      (let [b (bag [1 2 3])]
+        (is (contains? b 1))
+        (is (contains? b 2))
+        (is (not (contains? b 4)))
+        (let [entry (find b 2)]
+          (is (some? entry))
+          (is (= 2 (key entry)))
+          (is (= 1 (val entry))))
+        (let [b2 (bag-conj b 4)]
+          (is (= 1 (get b2 4))))
+        (let [b3 (loop [result b n 2]
+                   (if (zero? n)
+                     result
+                     (recur (bag-conj result 1) (dec n))))]
+          (is (= 3 (get b3 1))))))
 
-  (testing "Работа со стандартными функциями Clojure"
-    (let [b (bag [1 2 3 2 1])]
-      (is (= 5 (count b)))
-      (is (= 3 (count (bag-distinct-seq b))))
-      (is (some #{2} b))
-      (is (every? integer? b))
-      (is (= #{1 2 3} (set b)))
-      (is (= [1 1 2 2 3] (sort (seq b))))))))
+    (testing "Работа со стандартными функциями Clojure"
+      (let [b (bag [1 2 3 2 1])]
+        (is (= 5 (count b)))
+        (is (= 3 (count (bag-distinct-seq b))))
+        (is (some #{2} b))
+        (is (every? integer? b))
+        (is (= #{1 2 3} (set b)))
+        (is (= [1 1 2 2 3] (sort (seq b))))))))
 
 ;; Property-based Tests
 
@@ -307,10 +307,9 @@
                        (= (frequencies elements) (frequencies left-reduce))
                        (= (frequencies elements) (frequencies right-reduce))))))
 
-
 (defspec bag-disj-consistency 50
   (prop/for-all [b non-empty-bag-gen]
-                (let [distinct-elems (seq (bag-distinct-seq b))  
+                (let [distinct-elems (seq (bag-distinct-seq b))
                       elem (first distinct-elems)
                       b-after-disj (bag-disj b elem)
                       cnt-before (get-count b elem)]
@@ -321,9 +320,9 @@
 (defspec bag-unique-properties 50
   (prop/for-all [elements (gen/vector element-gen 0 15)]
                 (let [b (reduce bag-conj (empty-bag) elements)
-                      distinct-elems (seq (bag-distinct-seq b))  
+                      distinct-elems (seq (bag-distinct-seq b))
                       frequencies-map (bag-frequencies b)]
-                  
+
                   (and
                    (= (count distinct-elems) (distinct-count b))
                    (= (count-elements b) (reduce + (vals frequencies-map)))
@@ -345,7 +344,7 @@
 
 (defspec bag-disj-first-element 50
   (prop/for-all [b non-empty-bag-gen]
-                (let [distinct-elements (seq (bag-distinct-seq b))  
+                (let [distinct-elements (seq (bag-distinct-seq b))
                       first-elem (first distinct-elements)
                       b-after-disj (bag-disj b first-elem)
                       original-count (get-count b first-elem)]
@@ -357,9 +356,9 @@
   (prop/for-all [b1 bag-gen
                  b2 bag-gen]
                 (let [union-bag (bag-union b1 b2)
-                      all-elements (concat (seq b1) (seq b2))  
+                      all-elements (concat (seq b1) (seq b2))
                       expected-frequencies (frequencies all-elements)]
-                  
+
                   (every? (fn [[elem expected-count]]
                             (= expected-count (get-count union-bag elem)))
                           expected-frequencies))))

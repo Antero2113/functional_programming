@@ -366,16 +366,18 @@
    Работает как с SCBag, так и с обычными коллекциями Clojure."
   [sc-bag]
   (if (instance? SCBag sc-bag)
-    (reduce-left (fn [acc elem] (conj acc elem)) [] sc-bag)
+    (let [result (reduce-left (fn [acc elem] (conj acc elem)) [] sc-bag)]
+      (seq result))  ;; Гарантируем возврат seq
     ;; Если передан не SCBag, возвращаем как есть
-    (seq sc-bag))) ; <- ИСПРАВЛЕНИЕ: оборачиваем в seq для консистентности
+    (seq sc-bag)))
 
 (defn bag-distinct-seq
   "Последовательность уникальных элементов.
    Работает как с SCBag, так и с обычными коллекциями Clojure."
   [sc-bag]
   (if (instance? SCBag sc-bag)
-    (reduce-left (fn [acc elem] (conj acc elem)) #{} sc-bag)
+    (let [result (reduce-left (fn [acc elem] (conj acc elem)) #{} sc-bag)]
+      (seq result))  ;; Гарантируем возврат seq
     ;; Если передан не SCBag, возвращаем уникальные элементы
     (distinct sc-bag)))
 
@@ -440,11 +442,3 @@
 
 (defmethod print-method SCBag [bag writer]
   (.write writer (bag->string bag)))
-
-;; ============================================================================
-;; Реализация интерфейсов стандартных коллекций Clojure
-;; ============================================================================
-;; 
-;; Интерфейсы реализованы напрямую в defrecord SCBag (строки 13-87).
-;; Все методы интерфейсов работают с ЭЛЕМЕНТАМИ bag, а не с полями записи.
-;; Доступ к полям записи сохраняется через ключевые слова.

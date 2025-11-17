@@ -366,8 +366,20 @@
    Работает как с SCBag, так и с обычными коллекциями Clojure."
   [sc-bag]
   (if (instance? SCBag sc-bag)
-    (let [result (reduce-left (fn [acc elem] (conj acc elem)) [] sc-bag)]
-      (seq result))  ;; Гарантируем возврат seq
+    ;; Используем явное создание последовательности через loop/recur
+    (let [result (transient [])]
+      (loop [i 0]
+        (if (>= i (count (:buckets sc-bag)))
+          (persistent! result)
+          (let [bucket (get (:buckets sc-bag) i)]
+            (if (nil? bucket)
+              (recur (inc i))
+              (loop [current bucket]
+                (when current
+                  (dotimes [_ (:count current)]
+                    (conj! result (:key current)))
+                  (recur (:next current)))
+                (recur (inc i)))))))
     ;; Если передан не SCBag, возвращаем как есть
     (seq sc-bag)))
 
@@ -376,8 +388,19 @@
    Работает как с SCBag, так и с обычными коллекциями Clojure."
   [sc-bag]
   (if (instance? SCBag sc-bag)
-    (let [result (reduce-left (fn [acc elem] (conj acc elem)) #{} sc-bag)]
-      (seq result))  ;; Гарантируем возврат seq
+    ;; Используем явное создание последовательности через loop/recur
+    (let [result (transient [])]
+      (loop [i 0]
+        (if (>= i (count (:buckets sc-bag)))
+          (persistent! result)
+          (let [bucket (get (:buckets sc-bag) i)]
+            (if (nil? bucket)
+              (recur (inc i))
+              (loop [current bucket]
+                (when current
+                  (conj! result (:key current))
+                  (recur (:next current)))
+                (recur (inc i)))))))
     ;; Если передан не SCBag, возвращаем уникальные элементы
     (distinct sc-bag)))
 

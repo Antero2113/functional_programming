@@ -1,0 +1,11 @@
+result-tail(smallest-multiple-tail 20)
+smallest-multiple-rec 20
+(smallest-multiple-rec 20)
+(smallest-multiple-map 20)
+(smallest-multiple-tail 20)
+ Алгоритм Евклида для НОД
+(smallest-multiple-modular 20)
+(smallest-multiple-modular-map 1000)
+(euler-26-modular-map 1000)
+(test-cycle-logic)
+(test-cycle-logic )

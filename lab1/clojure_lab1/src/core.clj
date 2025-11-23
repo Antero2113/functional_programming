@@ -201,7 +201,7 @@
 
 (defn euler-26-lazy-infinite [limit]
   (->> (euler-26-infinite)
-       (take (- limit 1))     
+       (take (- limit 1))    ; вместо take использовать first 
        (last)                 
        (:d)))
 

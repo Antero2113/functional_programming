@@ -4,10 +4,6 @@
   (:gen-class))
 
 
-;; ============================================================================
-;;                               АЛГОРИТМЫ
-;; ============================================================================
-
 (defn linear-interp [[x1 y1] [x2 y2] x]
   (if (= x1 x2)
     y1
@@ -27,7 +23,6 @@
                                (drop (inc level) xs)
                                (drop       level  xs)))))))))
 
-
 (defn newton-interp [pts x]
   (let [xs (map first pts)
         dif (divided-diffs pts)]
@@ -39,14 +34,9 @@
           (recur (inc i) acc' w'))))))
 
 
-;; ============================================================================
-;;                       ГЕНЕРАЦИЯ ОБЛАСТЕЙ И ТОЧЕК
-;; ============================================================================
-
-(defn newton-range [window]
-  [(ffirst window) (first (last window))])
 
 (defn linear-range [window]
+  "Берем только последние две точки"
   (let [[p1 p2] (take-last 2 window)]
     [(first p1) (first p2)]))
 
@@ -55,84 +45,52 @@
                 (max start (+ last-x step))
                 start)]
     (when (< start end)
-      (->> (range start (+ end step) step)
+      (->> (iterate #(+ % step) start)
            (take-while #(<= % end))
            vec))))
 
-
-;; ============================================================================
-;;                       ОКНО И ПОТОКОВАЯ ЛОГИКА
-;; ============================================================================
-
-(defn window-size [alg n]
-  (case alg
-    :linear 2
-    :newton n))
-
-(defn push-window [window pt max-size]
-  (let [w (conj window pt)]
-    (if (> (count w) max-size)
-      (vec (rest w))
-      w)))
-
-(defn intervals-of-window [window]
-  (map (fn [[a b]] [(first a) (first b)]) (partition 2 1 window)))
-
-(defn new-intervals
-  "Возвращает интервалы, которые были в новом окне, но не были в предыдущем."
-  [old-window new-window]
-  (let [old (set (intervals-of-window old-window))
-        new (set (intervals-of-window new-window))]
-    (sort-by first (set/difference new old))))
-
-
-;; ============================================================================
-;;                      ВЫЧИСЛЕНИЕ ПО АЛГОРИТМАМ
-;; ============================================================================
-
 (defn compute-linear [window step last-x]
-  (let [[a b] (linear-range window)]
-    (gen-xs a b step last-x)))
+  (let [[x1 x2] (linear-range window)]
+    (gen-xs x1 x2 step last-x)))
+
+(defn process-linear [window step last-x]
+  (let [xs (compute-linear window step last-x)]
+    (when (seq xs)
+      {:pts (mapv (fn [x] [x (linear-interp (nth window (- (count window) 2))
+                                            (last window) x)]) xs)
+       :last-x (last xs)})))
+
+(defn process-final-linear [window step last-x]
+  "Финальный проход при EOF — гарантируем вывод последней точки"
+  (let [[x1 y1] (first window)
+        [x2 y2] (second window)
+        xs (compute-linear window step last-x)]
+    (vec
+     (concat
+       (mapv (fn [x] [x (linear-interp (first window) (second window) x)]) xs)
+       (when (or (empty? xs) (< (last xs) x2))
+         [[x2 y2]])))))
+
+
+
+(defn newton-range [window]
+  [(ffirst window) (first (last window))])
 
 (defn compute-newton [window step last-x]
   (let [[a b] (newton-range window)]
     (gen-xs a b step last-x)))
 
-(defn process-alg
-  "Возвращает карту {:alg alg :pts [[x y] ...] :last-x new-last-x}"
-  [alg window step n last-x]
-  (let [xs (case alg
-             :linear (compute-linear window step last-x)
-             :newton (compute-newton window step last-x))]
+(defn process-newton [window step last-x]
+  (let [xs (compute-newton window step last-x)]
     (when (seq xs)
-      {:alg alg
-       :pts (mapv (fn [x]
-                    [x (case alg
-                         :linear (linear-interp (nth window (- (count window) 2))
-                                                (last window) x)
-                         :newton (newton-interp window x))])
-                  xs)
+      {:pts (mapv (fn [x] [x (newton-interp window x)]) xs)
        :last-x (last xs)})))
 
-
-(defn process-final-alg [alg window step n last-x]
-  (let [[a b] (case alg
-                :linear (linear-range window)
-                :newton (newton-range window))
-        xs (gen-xs a b step last-x)]
-    (mapv (fn [x]
-            [x (case alg
-                 :linear (if (= x b) (second (last window))
-                             (linear-interp (nth window (- (count window) 2))
-                                            (last window) x))
-                 :newton (if (= x b) (second (last window))
-                             (newton-interp window x)))] )
-          xs)))
+(defn process-final-newton [window step last-x]
+  (let [xs (compute-newton window step last-x)]
+    (mapv (fn [x] [x (newton-interp window x)]) xs)))
 
 
-;; ============================================================================
-;;                            ПАРСИНГ ВВОДА
-;; ============================================================================
 
 (defn parse-line [s]
   (try
@@ -141,83 +99,77 @@
     (catch Exception _ nil)))
 
 
-;; ============================================================================
-;;                             ОСНОВНОЙ ЦИКЛ
-;; ============================================================================
-
 (defn -main [& args]
-  ;; ---- парсим аргументы ----------------------------------------------------
   (let [algos (->> args
-                   (filter #(#{ "--linear" "--newton"} %))
-                   (map {"--linear" :linear "--newton" :newton})
-                   (into []))
-        algos (if (empty? algos) [:linear] algos)
-        step (if-let [i (.indexOf args "--step")]
-               (Double/parseDouble (nth args (inc i)))
-               1.0)
-        n   (if-let [i (.indexOf args "-n")]
-              (Integer/parseInt (nth args (inc i)))
-              4)
+                 (filter #(#{ "--linear" "--newton"} %))
+                 (map {"--linear" :linear "--newton" :newton})
+                 (into []))
+      algos (if (empty? algos) [:linear] algos)
 
-        ;; максимальный размер окна, который нам нужен (для буфера n+1)
-        max-window-size (apply max (map #(window-size % n) algos))]
+      step-idx (.indexOf args "--step")
+      step (if (and (>= step-idx 0) (< (inc step-idx) (count args)))
+             (Double/parseDouble (nth args (inc step-idx)))
+             1.0)
 
-    ;; ---- потоковая обработка ----------------------------------------------
-    (loop [{:keys [buffer last] :or {buffer [] last {}} :as st} {:buffer [] :last {}}]
-      (if-let [line (read-line)]
-        (if-let [pt (parse-line line)]
-          (let [buf2 (conj buffer pt)]
-            ;; запускаем интерполяцию, когда в буфере стало max-window-size + 1
-            (if (= (count buf2) (inc max-window-size))
-              (let [window (vec (butlast buf2))   ;; окно = предыдущие max-window-size точек
-                    ;; триггерная точка = last buf2 (не используется напрямую
-                    ;; в вычислениях, но служит причиной запуска)
-                    _trig   (last buf2)
+      n-idx (.indexOf args "-n")
+      n (if (and (>= n-idx 0) (< (inc n-idx) (count args)))
+          (Integer/parseInt (nth args (inc n-idx)))
+          4)]
 
-                    ;; выполняем расчёт для каждого алгоритма (если окно нужного размера)
-                    new-last
-                    (reduce
-                     (fn [m alg]
-                       (let [req (window-size alg n)]
-                         (if (= (count window) req)
-                           (let [lr (get last alg)
-                                 res (process-alg alg window step n lr)]
-                             (if res
-                               (do
-                                 (doseq [[x y] (:pts res)]
-                                   (println (name alg) ":" x y))
-                                 (assoc m alg (:last-x res)))
-                               m))
-                           m)))
-                     last
-                     algos)]
-                ;; удаляем самую старую точку из буфера (чтобы размер <= max-window-size)
-                (recur {:buffer (vec (rest buf2))
-                        :last   (merge last new-last)}))
 
-              ;; иначе — просто копим точку
-              (recur {:buffer buf2 :last last})))
+    ;; потоковая обработка
+   (loop [{:keys [buffer last] :or {buffer [] last {}}} {:buffer [] :last {}}]
+  (if-let [line (read-line)]
+    (if-let [pt (parse-line line)]
+      (let [buf2 (conj buffer pt)
+            ;; линейная интерполяция 
+            last-linear
+            (if (and (some #{:linear} algos) (>= (count buf2) 2))
+              (let [window (take-last 2 buf2)
+                    lr (get last :linear)
+                    res (process-linear window step lr)]
+                (when res
+                  (doseq [[x y] (:pts res)]
+                    (println "linear:" x y))
+                  (:last-x res))))
 
-          ;; строка не распарсилась — пропускаем
-          (recur st))
+            ;; Ньютон 
+            last-newton
+            (if (and (some #{:newton} algos) (>= (count buf2) (inc n)))
+              (let [window (take-last n (butlast buf2))
+                    lr (get last :newton)
+                    res (process-newton window step lr)]
+                (when res
+                  (doseq [[x y] (:pts res)]
+                    (println "newton:" x y))
+                  (:last-x res))))]
 
-        ;; ==================== EOF =====================
-(do
-  ;; при конец-вода делаем финальный сдвиг окна:
-  ;; считаем, что пришла "фиктивная" новая точка,
-  ;; но не используем её в расчёте — она лишь триггер.
-  (when (>= (count buffer) max-window-size)
-    (let [window (vec (take-last max-window-size buffer))]
+        ;; продолжаем цикл с обновленным буфером и last
+        (recur {:buffer buf2
+                :last (cond-> last
+                        last-linear (assoc :linear last-linear)
+                        last-newton (assoc :newton last-newton))}))
 
-      (doseq [alg algos]
-        (let [req (window-size alg n)]
-          (when (= (count window) req)
+      ;; строка не распарсилась
+      (recur {:buffer buffer :last last}))
 
-            ;; last-x = последняя посчитанная точка данного алгоритма
-            (let [lr (get last alg)
-                  res (process-final-alg alg window step n lr)]
+    ;; EOF
+    (do
+      ;; финальный проход линейной интерполяции
+      (when (and (some #{:linear} algos) (>= (count buffer) 2))
+        (let [window (take-last 2 buffer)
+              lr (get last :linear)
+              res (process-final-linear window step lr)]
+          (doseq [[x y] res]
+            (println "linear:" x y))))
 
-              (doseq [[x y] res]
-                (println (name alg) ":" x y))))))))
+      ;; финальный проход Ньютон
+      (when (and (some #{:newton} algos) (>= (count buffer) n))
+        (let [window (take-last n buffer)
+              lr (get last :newton)
+              res (process-final-newton window step lr)]
+          (doseq [[x y] res]
+            (println "newton:" x y))))
 
-  (System/exit 0))))))
+      (System/exit 0))))))
+

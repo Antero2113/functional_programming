@@ -1,4 +1,4 @@
-name: Lab2 Tests
+name: Lab3 Tests
 
 on:
   push:
@@ -14,12 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: lab2/sc-bag
+        working-directory: lab3/interpolation
 
     steps:
     - uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # нужно, чтобы можно было пушить обратно
+        fetch-depth: 0  
 
     - uses: DeLaGuardo/setup-clojure@12.0
       with:
@@ -33,7 +33,7 @@ jobs:
         path: |
           ~/.m2
           ~/.lein
-        key: ${{ runner.os }}-clojure-${{ hashFiles('lab2/sc-bag/project.clj') }}
+        key: ${{ runner.os }}-clojure-${{ hashFiles('lab3/interpolation/project.clj') }}
         restore-keys: |
           ${{ runner.os }}-clojure-
 
@@ -64,6 +64,6 @@ jobs:
         git commit -m "style: auto-format Clojure code via cljfmt"
         git push
 
- 
     - name: Run tests
       run: lein test
+

@@ -3,7 +3,6 @@
             [clojure.set :as set])
   (:gen-class))
 
-
 (defn linear-interp [[x1 y1] [x2 y2] x]
   (if (= x1 x2)
     y1
@@ -32,8 +31,6 @@
         (let [w' (* w (- x (nth xs (dec i))))
               acc' (+ acc (* (nth (nth dif i) 0) w'))]
           (recur (inc i) acc' w'))))))
-
-
 
 (defn linear-range [window]
   "Берем только последние две точки"
@@ -67,11 +64,9 @@
         xs (compute-linear window step last-x)]
     (vec
      (concat
-       (mapv (fn [x] [x (linear-interp (first window) (second window) x)]) xs)
-       (when (or (empty? xs) (< (last xs) x2))
-         [[x2 y2]])))))
-
-
+      (mapv (fn [x] [x (linear-interp (first window) (second window) x)]) xs)
+      (when (or (empty? xs) (< (last xs) x2))
+        [[x2 y2]])))))
 
 (defn newton-range [window]
   [(ffirst window) (first (last window))])
@@ -90,86 +85,82 @@
   (let [xs (compute-newton window step last-x)]
     (mapv (fn [x] [x (newton-interp window x)]) xs)))
 
-
-
 (defn parse-line [s]
   (try
     (let [[a b] (-> s str/trim (str/replace ";" " ") (str/replace "\t" " ") (str/split #"\s+"))]
       [(Double/parseDouble a) (Double/parseDouble b)])
     (catch Exception _ nil)))
 
-
 (defn -main [& args]
   (let [algos (->> args
-                 (filter #(#{ "--linear" "--newton"} %))
-                 (map {"--linear" :linear "--newton" :newton})
-                 (into []))
-      algos (if (empty? algos) [:linear] algos)
+                   (filter #(#{"--linear" "--newton"} %))
+                   (map {"--linear" :linear "--newton" :newton})
+                   (into []))
+        algos (if (empty? algos) [:linear] algos)
 
-      step-idx (.indexOf args "--step")
-      step (if (and (>= step-idx 0) (< (inc step-idx) (count args)))
-             (Double/parseDouble (nth args (inc step-idx)))
-             1.0)
+        step-idx (.indexOf args "--step")
+        step (if (and (>= step-idx 0) (< (inc step-idx) (count args)))
+               (Double/parseDouble (nth args (inc step-idx)))
+               1.0)
 
-      n-idx (.indexOf args "-n")
-      n (if (and (>= n-idx 0) (< (inc n-idx) (count args)))
-          (Integer/parseInt (nth args (inc n-idx)))
-          4)]
+        n-idx (.indexOf args "-n")
+        n (if (and (>= n-idx 0) (< (inc n-idx) (count args)))
+            (Integer/parseInt (nth args (inc n-idx)))
+            4)]
 
-
-    ;; потоковая обработка
-   (loop [{:keys [buffer last] :or {buffer [] last {}}} {:buffer [] :last {}}]
-  (if-let [line (read-line)]
-    (if-let [pt (parse-line line)]
-      (let [buf2 (conj buffer pt)
+;; потоковая обработка
+    (loop [{:keys [buffer last] :or {buffer [] last {}}} {:buffer [] :last {}}]
+      (if-let [line (read-line)]
+        (if-let [pt (parse-line line)]
+          (let [buf2 (conj buffer pt)
             ;; линейная интерполяция 
-            last-linear
-            (if (and (some #{:linear} algos) (>= (count buf2) 2))
-              (let [window (take-last 2 buf2)
-                    lr (get last :linear)
-                    res (process-linear window step lr)]
-                (when res
-                  (doseq [[x y] (:pts res)]
-                    (println "linear:" x y))
-                  (:last-x res))))
+                last-linear
+                (if (and (some #{:linear} algos) (>= (count buf2) 2))
+                  (let [window (take-last 2 buf2)
+                        lr (get last :linear)
+                        res (process-linear window step lr)]
+                    (when res
+                      (doseq [[x y] (:pts res)]
+                        (println "linear:" x y))
+                      (:last-x res))))
 
             ;; Ньютон 
-            last-newton
-            (if (and (some #{:newton} algos) (>= (count buf2) (inc n)))
-              (let [window (take-last n (butlast buf2))
-                    lr (get last :newton)
-                    res (process-newton window step lr)]
-                (when res
-                  (doseq [[x y] (:pts res)]
-                    (println "newton:" x y))
-                  (:last-x res))))]
+                last-newton
+                (if (and (some #{:newton} algos) (>= (count buf2) (inc n)))
+                  (let [window (take-last n (butlast buf2))
+                        lr (get last :newton)
+                        res (process-newton window step lr)]
+                    (when res
+                      (doseq [[x y] (:pts res)]
+                        (println "newton:" x y))
+                      (:last-x res))))]
 
         ;; продолжаем цикл с обновленным буфером и last
-        (recur {:buffer buf2
-                :last (cond-> last
-                        last-linear (assoc :linear last-linear)
-                        last-newton (assoc :newton last-newton))}))
+            (recur {:buffer buf2
+                    :last (cond-> last
+                            last-linear (assoc :linear last-linear)
+                            last-newton (assoc :newton last-newton))}))
 
       ;; строка не распарсилась
-      (recur {:buffer buffer :last last}))
+          (recur {:buffer buffer :last last}))
 
     ;; EOF
-    (do
+        (do
       ;; финальный проход линейной интерполяции
-      (when (and (some #{:linear} algos) (>= (count buffer) 2))
-        (let [window (take-last 2 buffer)
-              lr (get last :linear)
-              res (process-final-linear window step lr)]
-          (doseq [[x y] res]
-            (println "linear:" x y))))
+          (when (and (some #{:linear} algos) (>= (count buffer) 2))
+            (let [window (take-last 2 buffer)
+                  lr (get last :linear)
+                  res (process-final-linear window step lr)]
+              (doseq [[x y] res]
+                (println "linear:" x y))))
 
       ;; финальный проход Ньютон
-      (when (and (some #{:newton} algos) (>= (count buffer) n))
-        (let [window (take-last n buffer)
-              lr (get last :newton)
-              res (process-final-newton window step lr)]
-          (doseq [[x y] res]
-            (println "newton:" x y))))
+          (when (and (some #{:newton} algos) (>= (count buffer) n))
+            (let [window (take-last n buffer)
+                  lr (get last :newton)
+                  res (process-final-newton window step lr)]
+              (doseq [[x y] res]
+                (println "newton:" x y))))
 
-      (System/exit 0))))))
+          (System/exit 0))))))
 

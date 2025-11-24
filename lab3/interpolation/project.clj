@@ -6,5 +6,6 @@
   :dependencies [[org.clojure/clojure "1.12.2"]]
   :main ^:skip-aot interpolation.core
   :target-path "target/%s"
+  :plugins [[lein-cljfmt "0.8.0"]]
   :profiles {:uberjar {:aot :all
                        :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}})

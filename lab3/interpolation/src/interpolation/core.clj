@@ -58,7 +58,6 @@
        :last-x (last xs)})))
 
 (defn process-final-linear [window step last-x]
-  "Финальный проход при EOF — гарантируем вывод последней точки"
   (let [[x1 y1] (first window)
         [x2 y2] (second window)
         xs (compute-linear window step last-x)]
@@ -135,7 +134,6 @@
                         (println "newton:" x y))
                       (:last-x res))))]
 
-        ;; продолжаем цикл с обновленным буфером и last
             (recur {:buffer buf2
                     :last (cond-> last
                             last-linear (assoc :linear last-linear)

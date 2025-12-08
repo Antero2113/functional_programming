@@ -33,9 +33,10 @@
 
 (deftest test-process-linear
   (testing "Обработка линейной интерполяции"
-    (let [window [[0 0] [1 1]]
+    (let [algorithm (->LinearInterpolation)
+          window [[0 0] [1 1]]
           step 0.5
-          result (process-linear window step nil)]
+          result (process algorithm window step nil)]
       (is (not (nil? result)))
       (is (some? (:last-x result)))
       (is (pos? (count (:pts result))))
@@ -48,9 +49,10 @@
 
 (deftest test-process-newton
   (testing "Обработка интерполяции Ньютона"
-    (let [window [[0 0] [1 1] [2 4] [3 9]]
+    (let [algorithm (->NewtonInterpolation 4)
+          window [[0 0] [1 1] [2 4] [3 9]]
           step 0.5
-          result (process-newton window step nil)]
+          result (process algorithm window step nil)]
       (is (not (nil? result)))
       (is (some? (:last-x result)))
       (is (pos? (count (:pts result)))))))
@@ -59,11 +61,11 @@
   (testing "Генерация точек для линейной интерполяции"
     (let [window [[0 0] [1 1]]
           step 0.5
-          xs (compute-linear window step nil)]
+          xs (compute-linear-points window step nil)]
       (is (vector? xs))
       (is (pos? (count xs)))
       (is (<= (first xs) (last xs)))
-      (is (= [0.5 1.0] (compute-linear window step 0.0))))))
+      (is (= [0.5 1.0] (compute-linear-points window step 0.0))))))
 
 (deftest test-divided-diffs
   (testing "Вычисление разделенных разностей"
@@ -82,3 +84,21 @@
   (testing "Определение диапазона для интерполяции Ньютона"
     (let [window [[0 0] [1 1] [2 4] [3 9]]]
       (is (= [0 3] (newton-range window))))))
+
+(deftest test-linear-algorithm-protocol
+  (testing "Протокол для линейной интерполяции"
+    (let [algorithm (->LinearInterpolation)]
+      (is (= 2 (window-size algorithm)))
+      (is (= "linear" (algorithm-name algorithm)))
+      (is (can-process? algorithm [[0 0] [1 1]]))
+      (is (not (can-process? algorithm [[0 0]])))
+      (is (= [[1 1] [2 2]] (get-window algorithm [[0 0] [1 1] [2 2]]))))))
+
+(deftest test-newton-algorithm-protocol
+  (testing "Протокол для интерполяции Ньютона"
+    (let [algorithm (->NewtonInterpolation 4)]
+      (is (= 4 (window-size algorithm)))
+      (is (= "newton" (algorithm-name algorithm)))
+      (is (can-process? algorithm [[0 0] [1 1] [2 2] [3 3]]))
+      (is (not (can-process? algorithm [[0 0] [1 1] [2 2]])))
+      (is (= [[1 1] [2 2] [3 3] [4 4]] (get-window algorithm [[0 0] [1 1] [2 2] [3 3] [4 4]]))))))

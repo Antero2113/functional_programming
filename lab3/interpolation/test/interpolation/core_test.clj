@@ -1,7 +1,5 @@
 (ns interpolation.core-test
   (:require [clojure.test :refer :all]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
             [interpolation.core :refer :all]))
 
 (deftest test-linear-interp
@@ -31,40 +29,51 @@
     (is (= [1.0 2.0] (parse-line "1\t2")))
     (is (nil? (parse-line "invalid")))))
 
-(deftest test-process-linear
-  (testing "Обработка линейной интерполяции"
-    (let [algorithm (->LinearInterpolation)
-          window [[0 0] [1 1]]
-          step 0.5
-          result (process algorithm window step nil)]
-      (is (not (nil? result)))
-      (is (some? (:last-x result)))
-      (is (pos? (count (:pts result))))
-      (let [first-pt (first (:pts result))
-            last-pt (last (:pts result))]
-        (is (vector? first-pt))
-        (is (vector? last-pt))
-        (is (= 2 (count first-pt)))
-        (is (= 2 (count last-pt)))))))
+(deftest test-is-sorted?
+  (testing "Проверка сортировки точек"
+    (is (true? (is-sorted? [] [1 1])))
+    (is (true? (is-sorted? [[0 0]] [1 1])))
+    (is (true? (is-sorted? [[0 0]] [0 1])))
+    (is (false? (is-sorted? [[1 1]] [0 0])))))
 
-(deftest test-process-newton
-  (testing "Обработка интерполяции Ньютона"
-    (let [algorithm (->NewtonInterpolation 4)
-          window [[0 0] [1 1] [2 4] [3 9]]
-          step 0.5
-          result (process algorithm window step nil)]
-      (is (not (nil? result)))
-      (is (some? (:last-x result)))
-      (is (pos? (count (:pts result)))))))
+(deftest test-gen-xs
+  (testing "Генерация последовательности точек x"
+    (is (= [0 1.0 2.0] (gen-xs 0 2 1.0 nil)))
+    (is (= [1.5 2.0] (gen-xs 0 2 0.5 1.0)))
+    (is (nil? (gen-xs 2 1 1.0 nil)))))
 
-(deftest test-compute-linear
+(deftest test-linear-algorithm
+  (testing "Алгоритм линейной интерполяции"
+    (let [algorithm (create-linear-algorithm)]
+      (is (= 2 ((:window-size algorithm))))
+      (is (= "linear" ((:algorithm-name algorithm))))
+      (is (true? ((:can-process? algorithm) [[0 0] [1 1]])))
+      (is (false? ((:can-process? algorithm) [[0 0]])))
+      (is (= [[1 1] [2 2]] ((:get-window algorithm) [[0 0] [1 1] [2 2]])))
+      (let [result ((:process algorithm) algorithm [[0 0] [1 1]] 0.5 nil)]
+        (is (some? result))
+        (is (some? (:last-x result)))
+        (is (pos? (count (:pts result))))))))
+
+(deftest test-newton-algorithm
+  (testing "Алгоритм интерполяции Ньютона"
+    (let [algorithm (create-newton-algorithm 4)]
+      (is (= 4 ((:window-size algorithm))))
+      (is (= "newton" ((:algorithm-name algorithm))))
+      (is (true? ((:can-process? algorithm) [[0 0] [1 1] [2 2] [3 3] [4 4]])))
+      (is (false? ((:can-process? algorithm) [[0 0] [1 1] [2 2] [3 3]])))
+      (is (= [[1 1] [2 2] [3 3] [4 4]] ((:get-window algorithm) [[0 0] [1 1] [2 2] [3 3] [4 4] [5 5]])))
+      (let [result ((:process algorithm) algorithm [[0 0] [1 1] [2 4] [3 9]] 0.5 nil)]
+        (is (some? result))
+        (is (some? (:last-x result)))
+        (is (pos? (count (:pts result))))))))
+
+(deftest test-compute-linear-points
   (testing "Генерация точек для линейной интерполяции"
     (let [window [[0 0] [1 1]]
-          step 0.5
-          xs (compute-linear-points window step nil)]
-      (is (vector? xs))
-      (is (pos? (count xs)))
-      (is (<= (first xs) (last xs)))
+          step 0.5]
+      (is (vector? (compute-linear-points window step nil)))
+      (is (pos? (count (compute-linear-points window step nil))))
       (is (= [0.5 1.0] (compute-linear-points window step 0.0))))))
 
 (deftest test-divided-diffs
@@ -84,21 +93,3 @@
   (testing "Определение диапазона для интерполяции Ньютона"
     (let [window [[0 0] [1 1] [2 4] [3 9]]]
       (is (= [0 3] (newton-range window))))))
-
-(deftest test-linear-algorithm-protocol
-  (testing "Протокол для линейной интерполяции"
-    (let [algorithm (->LinearInterpolation)]
-      (is (= 2 (window-size algorithm)))
-      (is (= "linear" (algorithm-name algorithm)))
-      (is (can-process? algorithm [[0 0] [1 1]]))
-      (is (not (can-process? algorithm [[0 0]])))
-      (is (= [[1 1] [2 2]] (get-window algorithm [[0 0] [1 1] [2 2]]))))))
-
-(deftest test-newton-algorithm-protocol
-  (testing "Протокол для интерполяции Ньютона"
-    (let [algorithm (->NewtonInterpolation 4)]
-      (is (= 4 (window-size algorithm)))
-      (is (= "newton" (algorithm-name algorithm)))
-      (is (can-process? algorithm [[0 0] [1 1] [2 2] [3 3]]))
-      (is (not (can-process? algorithm [[0 0] [1 1] [2 2]])))
-      (is (= [[1 1] [2 2] [3 3] [4 4]] (get-window algorithm [[0 0] [1 1] [2 2] [3 3] [4 4]]))))))

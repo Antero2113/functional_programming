@@ -2,7 +2,6 @@
   (:require [clojure.test :refer :all]
             [interpolation.core :refer :all]))
 
-
 (deftest test-parse-line
   (testing "Корректный парсинг входных строк"
     (is (= [0.0 0.0] (parse-line "0 0")))

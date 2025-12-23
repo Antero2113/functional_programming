@@ -18,7 +18,7 @@
     (take-while #(<= % b)
                 (iterate #(+ % step) start))))
 
-(defn valid-x? [buffer [x _]]                
+(defn valid-x? [buffer [x _]]
   (or (empty? buffer)
       (>= x (first (last buffer)))))
 
@@ -49,26 +49,26 @@
       (if (= k (count pts))
         acc
         (recur
-          (inc k)
-          (conj acc
-                (mapv
-                  (fn [i]
-                    (/ (- (get-in acc [(dec k) (inc i)])
-                          (get-in acc [(dec k) i]))
-                       (- (xs (+ i k))
-                          (xs i))))
-                  (range (- (count pts) k)))))))))
+         (inc k)
+         (conj acc
+               (mapv
+                (fn [i]
+                  (/ (- (get-in acc [(dec k) (inc i)])
+                        (get-in acc [(dec k) i]))
+                     (- (xs (+ i k))
+                        (xs i))))
+                (range (- (count pts) k)))))))))
 
 (defn newton-fn [pts]
   (let [xs  (mapv first pts)
         dif (divided-diffs pts)]
     (fn [x]
       (reduce
-        (fn [acc i]
-          (+ (get-in dif [i 0])
-             (* (- x (xs i)) acc)))
-        (last (map first dif))
-        (range (dec (count pts)) -1 -1)))))
+       (fn [acc i]
+         (+ (get-in dif [i 0])
+            (* (- x (xs i)) acc)))
+       (last (map first dif))
+       (range (dec (count pts)) -1 -1)))))
 
 (defn process-newton [buffer n step last-x]
   ;; считаем только при наличии (n + 1)-й точки
@@ -88,7 +88,7 @@
          last-newton-x nil]
     (if-let [line (read-line)]
       (if-let [pt (parse-line line)]
-        (if (valid-x? buffer pt)                    
+        (if (valid-x? buffer pt)
           (let [buffer' (conj buffer pt)
 
                 linear-res (when use-linear?
@@ -135,7 +135,6 @@
               (println "newton :" x y))))
 
         (System/exit 0)))))
-
 
 (defn parse-args [args]
   {:linear? (some #{"--linear"} args)

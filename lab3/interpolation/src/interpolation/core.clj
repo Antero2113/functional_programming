@@ -115,8 +115,7 @@
 
           ;; x нарушает сортировку                  
           (do
-            (binding [*out* *err*]
-              (println "ERROR: x must be non-decreasing, skipped:" pt))
+            (println "ERROR: x must be non-decreasing, skipped:" pt)
             (recur buffer last-linear-x last-newton-x)))
 
         ;; строка не распарсилась

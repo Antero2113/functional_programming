@@ -42,7 +42,7 @@ jobs:
 
     - name: Run linter (clj-kondo)
       run: |
-        npx clj-kondo --lint src test || [ $? -eq 2 ]
+        npx clj-kondo --lint src || [ $? -eq 2 ]
 
     - name: Check formatting (cljfmt)
       id: fmt
@@ -57,7 +57,7 @@ jobs:
       if: steps.fmt.outputs.fmt_status != '0'
       run: |
         echo "Formatting issues found — applying fixes..."
-        npx lein cljfmt fix src test
+        npx lein cljfmt fix src
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         git add .

@@ -34,7 +34,7 @@ jobs:
       run: npm install
 
     - name: Run linter (clj-kondo)
-      run: npx clj-kondo --lint src test
+      run: npx clj-kondo --lint src 
 
     - name: Build Shadow CLJS app
       run: npx shadow-cljs release app

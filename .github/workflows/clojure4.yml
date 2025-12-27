@@ -19,17 +19,20 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        fetch-depth: 0  
+        fetch-depth: 0
 
     - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: 20
+        node-version: "20"
 
-    - name: Install Shadow CLJS
+    - name: Install npm dependencies
+      run: npm install
+
+    - name: Install Shadow CLJS globally
       run: npm install -g shadow-cljs
 
-    - name: Cache npm dependencies
+    - name: Cache npm
       uses: actions/cache@v3
       with:
         path: ~/.npm
@@ -37,15 +40,33 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-npm-
 
-    - name: Install project dependencies
-      run: npm install
-
-    - name: Run clj-kondo lint
+    - name: Run linter (clj-kondo)
       run: |
-        npx clj-kondo --lint src || true  # предупреждения не прерывают workflow
+        npx clj-kondo --lint src test || [ $? -eq 2 ]
 
-    - name: Build Shadow CLJS release
-      run: shadow-cljs release app
+    - name: Check formatting (cljfmt)
+      id: fmt
+      run: |
+        set +e
+        npx lein cljfmt check src test
+        status=$?
+        set -e
+        echo "fmt_status=$status" >> $GITHUB_OUTPUT
 
-    - name: Run tests
-      run: shadow-cljs compile app-test
+    - name: Auto-fix and commit formatting
+      if: steps.fmt.outputs.fmt_status != '0'
+      run: |
+        echo "Formatting issues found — applying fixes..."
+        npx lein cljfmt fix src test
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add .
+        git commit -m "style: auto-format Clojure code via cljfmt"
+        git push
+
+    - name: Compile Shadow CLJS app
+      run: shadow-cljs compile app
+
+    - name: Run tests (optional, if you have CLJS tests)
+      run: |
+        echo "No specific test build configured; use :app build or add :app-test build in shadow-cljs.edn"

@@ -8,7 +8,7 @@
    [:positions "Штатные должности"]
    [:workdescription "Описание работ"]
    [:worktime "Рабочее время"]
-   [:staff-calculation "Расчет численности"]])
+   [:staffing "Расчет численности"]])
 
 
 (defn tabs-panel []

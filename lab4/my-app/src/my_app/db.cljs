@@ -8,6 +8,8 @@
 
    :work []
    
-   :worktime{} })
+   :worktime{1 {:jan {:total 160 :vacation 5}}} 
+   
+   :calc-period :year})
 
 

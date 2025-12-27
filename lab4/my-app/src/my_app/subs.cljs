@@ -18,6 +18,16 @@
  (fn [db _]
    (:work db)))
 
+;; подписка на выбранный период
+(rf/reg-sub
+ :calc-period
+ (fn [db _] (:calc-period db)))
+
+;; подписка на список периодов для выбора
+(rf/reg-sub
+ :periods
+ (fn [_ _] my-app.domain.periods/periods))
+
 ;; ДЛЯ РАБОЧЕГО ВРЕМЕНИ
 
 (def norm-hours
@@ -36,22 +46,25 @@
  (fn [db _]
    (let [positions (:positions db)
          worktime (:worktime db)]
-     (for [p positions
-           period periods]
-       (let [{:keys [id type months]} period
-             vacation (if (= type :month)
-                        (get-in worktime [(:id p) id :vacation-days] 0)
-                        (sum-vacation worktime (:id p) months))
-             norm (if (= type :month)
-                    (get norm-hours id 0)
-                    (reduce + (map norm-hours months)))
-             total (- norm (* vacation 8))]
-         {:position-name (:name p)
-          :position-id (:id p)
-          :period-id id
-          :period-label (:label period)
-          :type type
-          :norm norm
-          :vacation vacation
-          :total total})))))
+     (into {}  ;; <-- map вместо вектора
+           (for [p positions
+                 period periods]
+             (let [{:keys [id type months]} period
+                   vacation (if (= type :month)
+                              (get-in worktime [(:id p) id :vacation] 0)
+                              (reduce + (map #(get-in worktime [(:id p) % :vacation] 0) months)))
+                   norm (if (= type :month)
+                          (get norm-hours id 0)
+                          (reduce + (map norm-hours months)))
+                   total (- norm (* vacation 8))]
+               [[(:id p) id]
+                {:position-name (:name p)
+                 :position-id (:id p)
+                 :period-id id
+                 :period-label (:label period)
+                 :type type
+                 :norm norm
+                 :vacation vacation
+                 :total total}]))))))
+
 

@@ -132,3 +132,26 @@
  (fn [db [_ position-id period-id days]]
    (assoc-in db [:worktime position-id period-id :vacation-days] days)))
 
+;; РАСЧЕТ ЧИСЛЕННОСТИ
+
+(rf/reg-event-db
+ :update-staffing
+ (fn [db [_ position-id field value]]
+   (update db :positions
+           (fn [positions]
+             (mapv (fn [p]
+                     (if (= (:id p) position-id)
+                       (assoc p field value)
+                       p))
+                   positions)))))
+
+(rf/reg-event-db
+ :set-calc-period
+ (fn [db [_ period-id]]
+   (assoc db :calc-period period-id)))
+
+(rf/reg-event-db
+ :set-vacation-days
+ (fn [db [_ position-id period-id value]]
+   (assoc-in db [:worktime position-id period-id :vacation] value)))
+

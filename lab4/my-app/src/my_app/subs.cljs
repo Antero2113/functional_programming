@@ -37,7 +37,7 @@
 (defn sum-vacation [worktime position-id months]
   (reduce
    (fn [acc m]
-     (+ acc (get-in worktime [position-id m :vacation-days] 0)))
+     (+ acc (get-in worktime [position-id m :vacation] 0)))
    0
    months))
 

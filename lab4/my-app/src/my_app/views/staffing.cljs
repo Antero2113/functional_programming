@@ -83,7 +83,7 @@
         unavoidable-percent (percent-of-8 unavoidable)
         total-hours (total-work-hours position-id work-rows period-id)
         net (net-norm position-id worktime-table period-id non-norm break unavoidable)
-        vacation-days ((get-in worktime-table [position-id period-id :total]))
+        vacation-days (get-in worktime-table [position-id period-id :vacation] 0)
         vacation-indicator (if (> vacation-days 0) "да" "-")
         tgt (target-count total-hours net)
         tgt-rounded (target-count-rounded tgt)

@@ -130,7 +130,7 @@
 (rf/reg-event-db
  ::set-vacation-days
  (fn [db [_ position-id period-id days]]
-   (assoc-in db [:worktime position-id period-id :vacation-days] days)))
+   (assoc-in db [:worktime position-id period-id :vacation] days)))
 
 ;; РАСЧЕТ ЧИСЛЕННОСТИ
 
@@ -149,9 +149,4 @@
  :set-calc-period
  (fn [db [_ period-id]]
    (assoc db :calc-period period-id)))
-
-(rf/reg-event-db
- :set-vacation-days
- (fn [db [_ position-id period-id value]]
-   (assoc-in db [:worktime position-id period-id :vacation] value)))
 

@@ -53,17 +53,6 @@ jobs:
         set -e
         echo "fmt_status=$status" >> $GITHUB_OUTPUT
 
-    - name: Auto-fix and commit formatting
-      if: steps.fmt.outputs.fmt_status != '0'
-      run: |
-        echo "Formatting issues found — applying fixes..."
-        npx lein cljfmt fix src
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add .
-        git commit -m "style: auto-format Clojure code via cljfmt"
-        git push
-
     - name: Compile Shadow CLJS app
       run: shadow-cljs compile app
 

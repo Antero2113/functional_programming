@@ -1,4 +1,4 @@
-name: Shadow CLJS CI
+name: Lab4 CI
 
 on:
   push:
@@ -6,32 +6,38 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lab4/my-app
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
-    - name: Setup Node.js
+    - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: "20"
-
-    - name: Install dependencies
-      run: npm ci
+        node-version: 20
 
     - name: Install shadow-cljs globally
       run: npm install -g shadow-cljs
 
-    - name: Build frontend
+    - name: Install project dependencies
+      run: npm install
+
+    - name: Run linter (clj-kondo)
+      run: npx clj-kondo --lint src test
+
+    - name: Build Shadow CLJS app
       run: npx shadow-cljs release app
 
     - name: Run tests
-      run: npx shadow-cljs test --karma
-
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: public
+      run: npx shadow-cljs run-tests

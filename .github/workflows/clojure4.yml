@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: my-app  # поддиректория с проектом
+        working-directory: lab4/my-app  # поддиректория с проектом
 
     steps:
     # --- Проверка исходников ---

@@ -2,25 +2,18 @@
   (:require
    [re-frame.core :as rf]
    [my-app.subs :as subs]
-   [my-app.events :as events]))
-
-
-(defn avg-time [min-time max-time]
-  (when (and (number? min-time) (number? max-time))
-    (/ (+ (* 3 min-time) (* 2 max-time)) 5)))
-
-(defn get-position-norm
-  [position-id positions]
-  (let [pos (some #(when (= (:id %) position-id) %) positions)]
-    (or (:norm pos) 0)))
+   [my-app.events :as events]
+   [my-app.calc.workload :as workload]))
 
 (defn work-row [row positions]
   (let [{:keys [id position-id business-process operation time-unit
                 min-time max-time frequency-param frequency
                 manual-hours full-period proportional-period
                 calculation-period auto-hours manual-value]} row
-        avg (avg-time min-time max-time)
-        position-norm (get-position-norm position-id positions)]
+        period @(rf/subscribe [:selected-period])
+        avg (workload/avg-time min-time max-time)
+        position-norm (workload/get-position-norm position-id positions)
+        calculated (workload/workload row position-norm period)]
     [:tr
      ;; Должность
      [:td
@@ -103,13 +96,13 @@
                                 [::events/set-proportional id])}]]
 
      ;; период
-     [:td [:input {:value calculation-period
-                   :on-change #(rf/dispatch
-                                [::events/update-work id :calculation-period
-                                 (.. % -target -value)])}]]
+     [:td (name period)]
+
 
      ;; норма должности (read-only)
      [:td position-norm]
+
+     [:td (when calculated (.toFixed calculated 2))]
 
      ;; удалить
      [:td [:button {:on-click #(rf/dispatch [::events/remove-work id])}
@@ -117,7 +110,8 @@
 
 (defn workdescription-page []
   (let [rows @(rf/subscribe [:work])
-        positions @(rf/subscribe [:positions])]
+        positions @(rf/subscribe [:positions])
+        period @(rf/subscribe [:selected-period])]
     [:div
      [:h2 "Описание работ"]
      [:button {:on-click #(rf/dispatch [::events/add-work])}
@@ -139,6 +133,7 @@
         [:th "Пропорц."]
         [:th "Расчетный период"]
         [:th "Норма рабочего времени"]
+        [:th "Трудозатраты за период"]
         [:th ""]]]
       [:tbody
        (for [r rows]

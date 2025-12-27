@@ -14,7 +14,7 @@
     [:tr
      [:td position-name]
      [:td period-label]
-     [:td norm-display]  ;; норма рабочего времени, округлено
+     [:td norm-display]  
      [:td
       (if (or (= type :month) (nil? type))
         [:input {:type "number"
@@ -25,7 +25,7 @@
                                position-id period-id
                                (js/parseInt (.. % -target -value))])}]
         vacation)]
-     [:td total-display]]))  ;; итого норма времени, округлено
+     [:td total-display]]))  
 
 
 (defn worktime-page []

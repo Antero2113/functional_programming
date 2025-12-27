@@ -94,7 +94,7 @@
                       (assoc r
                              :manual-hours v
                              :full-period false
-                             :proportional-period false)
+                             :proportional-period true)
                       r))
                   %))))
 
@@ -130,23 +130,17 @@
 (rf/reg-event-db
  ::set-vacation-days
  (fn [db [_ position-id period-id days]]
-   (assoc-in db [:worktime position-id period-id :vacation] days)))
+   (assoc-in db [:worktime position-id period-id :vacation-days] days)))
 
 ;; РАСЧЕТ ЧИСЛЕННОСТИ
 
 (rf/reg-event-db
- :update-staffing
- (fn [db [_ position-id field value]]
-   (update db :positions
-           (fn [positions]
-             (mapv (fn [p]
-                     (if (= (:id p) position-id)
-                       (assoc p field value)
-                       p))
-                   positions)))))
-
-(rf/reg-event-db
- :set-calc-period
+ :set-selected-period
  (fn [db [_ period-id]]
-   (assoc db :calc-period period-id)))
+   (assoc db :selected-period period-id)))
 
+;; ввод значений на странице "Расчет численности"
+(rf/reg-event-db
+ ::set-staffing-input
+ (fn [db [_ position-id field value]]
+   (assoc-in db [:staffing-inputs position-id field] value)))

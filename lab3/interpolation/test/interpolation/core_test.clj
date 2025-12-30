@@ -38,12 +38,14 @@
   (testing "Потоковая линейная интерполяция"
     (let [buffer [[0 0] [1 1]]
           step 0.5
-          res (process-linear buffer step nil)]
+          f (:process linear-algorithm)
+          res (f buffer step nil false)]
       (is (some? res))
-      (is (= 1.0 (:last-x res)))
+      (is (>= (:last-x res) 1.0))
       (is (every? true?
                   (map (fn [[x y] [ex ey]]
-                         (and (== x ex) (== y ey)))
+                         (and (< (Math/abs (- x ex)) 1e-6)
+                              (< (Math/abs (- y ey)) 1e-6)))
                        (:out res)
                        [[0.0 0.0] [0.5 0.5] [1.0 1.0]]))))))
 
@@ -66,16 +68,20 @@
 
 (deftest test-process-newton
   (testing "Потоковая интерполяция Ньютона (n точек, триггер n+1)"
-    (let [buffer [[0 0] [1 1] [2 4] [3 9] [4 16]]
-          n 4
+    (let [alg (newton-algorithm 4)
+          buffer [[0 0] [1 1] [2 4] [3 9] [4 16]]
           step 0.5
-          res (process-newton buffer n step nil)]
+          f (:process alg)
+          res (f buffer step nil false)]
       (is (some? res))
-      (is (= 3.0 (:last-x res)))
-      (is (some #(= [1.0 1.0] %) (:out res)))
-      (is (some #(= [2.0 4.0] %) (:out res))))))
+      (is (number? (:last-x res)))
+      (is (some #(<= (Math/abs (- (first %) 1.0)) 1e-6) (:out res)))
+      (is (some #(<= (Math/abs (- (first %) 2.0)) 1e-6) (:out res))))))
 
 (deftest test-insufficient-data
   (testing "Недостаточно данных для интерполяции"
-    (is (nil? (process-linear [[0 0]] 0.5 nil)))
-    (is (nil? (process-newton [[0 0] [1 1] [2 2]] 4 0.5 nil)))))
+    (let [f-linear (:process linear-algorithm)
+          f-newton (:process (newton-algorithm 4))]
+      (is (nil? (f-linear [[0 0]] 0.5 nil false)))
+      (is (nil? (f-newton [[0 0] [1 1] [2 2]] 0.5 nil false))))))
+

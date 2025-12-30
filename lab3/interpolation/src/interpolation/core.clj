@@ -13,14 +13,13 @@
          (Double/parseDouble (p 1))]
         (catch Exception _ nil)))))
 
-(defn xs-between [a b step last-x]
-  (let [start (if last-x (max a (+ last-x step)) a)]
-    (take-while #(<= % b)
-                (iterate #(+ % step) start))))
-
 (defn valid-x? [buffer [x _]]
   (or (empty? buffer)
       (>= x (first (last buffer)))))
+
+(defn xs-between [a b step last-x]
+  (let [start (if last-x (+ last-x step) a)]
+    (take-while #(<= % b) (iterate #(+ % step) start))))
 
 ;; Линейная интерполяция
 
@@ -29,16 +28,6 @@
     y1
     (+ y1 (* (- y2 y1)
              (/ (- x x1) (- x2 x1))))))
-
-(defn process-linear [buffer step last-x]
-  (when (>= (count buffer) 2)
-    (let [[p1 p2] (take-last 2 buffer)
-          [x1 _] p1
-          [x2 _] p2
-          xs (xs-between x1 x2 step last-x)]
-      (when (seq xs)
-        {:last-x (last xs)
-         :out (map (fn [x] [x (linear-interp [p1 p2] x)]) xs)}))))
 
 ;; Интерполяция Ньютона
 
@@ -70,70 +59,76 @@
        (last (map first dif))
        (range (dec (count pts)) -1 -1)))))
 
-(defn process-newton [buffer n step last-x]
-  ;; считаем только при наличии (n + 1)-й точки
-  (when (>= (count buffer) (inc n))
-    (let [window (take n (butlast buffer))
-          [a _] (first window)
-          [b _] (last window)
-          f  (newton-fn window)
-          xs (xs-between a b step last-x)]
-      (when (seq xs)
-        {:last-x (last xs)
-         :out (map (fn [x] [x (f x)]) xs)}))))
+;; Описание алгоритмов 
 
-(defn process-stream [use-linear? use-newton? n step]
+(def linear-algorithm
+  {:id :linear
+   :label "linear"
+   :win-size 2
+   :process
+   (fn [buffer step last-x final?]
+     (when (>= (count buffer) 2)
+       (let [[p1 p2] (take-last 2 buffer)
+             xs (xs-between (first p1) (first p2) step last-x)]
+         (when (seq xs)
+           {:out (map #(vector % (linear-interp [p1 p2] %)) xs)
+            :last-x (last xs)}))))})
+
+(defn newton-algorithm [n]
+  {:id :newton
+   :label "newton"
+   :win-size (inc n)
+   :process
+   (fn [buffer step last-x final?]
+     (when (>= (count buffer) (inc n))
+       (let [window (if final?
+                      (take-last n buffer)
+                      (take n (butlast buffer)))
+             [a _] (first window)
+             [b _] (last window)
+             f (newton-fn window)
+             xs (xs-between a b step last-x)]
+         (when (seq xs)
+           {:out (map #(vector % (f %)) xs)
+            :last-x (last xs)}))))})
+
+;; Универсальная обработка алгоритма
+
+(defn run-algorithm
+  [alg buffer step last-x final?]
+  (when-let [{:keys [out last-x]} ((:process alg) buffer step last-x final?)]
+    (doseq [[x y] out]
+      (println (:label alg) ":" x y))
+    last-x))
+
+;; Потоковая обработка входного потока
+
+(defn process-stream [algorithms step]
   (loop [buffer []
-         last-linear-x nil
-         last-newton-x nil]
+         states (zipmap (map :id algorithms)
+                        (repeat nil))]
     (if-let [line (read-line)]
       (if-let [pt (parse-line line)]
         (if (valid-x? buffer pt)
           (let [buffer' (conj buffer pt)
+                max-win (apply max (map :win-size algorithms))
+                buffer'' (vec (take-last max-win buffer'))
 
-                linear-res (when use-linear?
-                             (process-linear buffer' step last-linear-x))
-
-                newton-res (when use-newton?
-                             (process-newton buffer' n step last-newton-x))]
-
-            ;; вывод
-            (when linear-res
-              (doseq [[x y] (:out linear-res)]
-                (println "linear :" x y)))
-
-            (when newton-res
-              (doseq [[x y] (:out newton-res)]
-                (println "newton :" x y)))
-
-            ;; ограничиваем буфер
-            (let [max-size (max 2 (inc n))
-                  buffer'' (vec (take-last max-size buffer'))]
-              (recur buffer''
-                     (or (:last-x linear-res) last-linear-x)
-                     (or (:last-x newton-res) last-newton-x))))
-
-          ;; x нарушает сортировку                  
+                states'
+                (into {}
+                      (for [alg algorithms]
+                        (let [new-last-x (run-algorithm alg buffer'' step (states (:id alg)) false)]
+                          [(:id alg) new-last-x])))]
+            (recur buffer'' states'))
           (do
             (println "ERROR: x must be non-decreasing, skipped:" pt)
-            (recur buffer last-linear-x last-newton-x)))
-
-        ;; строка не распарсилась
-        (recur buffer last-linear-x last-newton-x))
-
+            (recur buffer states)))
+        (recur buffer states))
       ;; EOF
-      (do
-        (when use-linear?
-          (when-let [res (process-linear buffer step last-linear-x)]
-            (doseq [[x y] (:out res)]
-              (println "linear :" x y))))
+      (doseq [alg algorithms]
+        (run-algorithm alg buffer step (states (:id alg)) true)))))
 
-        (when use-newton?
-          (when-let [res (process-newton buffer n step last-newton-x)]
-            (doseq [[x y] (:out res)]
-              (println "newton :" x y))))
-
-        (System/exit 0)))))
+;; Парсинг аргументов командной строки
 
 (defn parse-args [args]
   {:linear? (some #{"--linear"} args)
@@ -149,7 +144,15 @@
                          Integer/parseInt)
                 4)})
 
+(defn make-algorithms [{:keys [linear? newton? n]}]
+  (cond-> []
+    linear? (conj linear-algorithm)
+    newton? (conj (newton-algorithm n))))
+
+;; Точка входа
+
 (defn -main [& args]
-  (let [{:keys [linear? newton? n step]} (parse-args args)
-        linear? (or linear? (not newton?))]
-    (process-stream linear? newton? n step)))
+  (let [{:keys [linear? newton? step] :as opts} (parse-args args)
+        linear? (or linear? (not newton?))
+        algorithms (make-algorithms (assoc opts :linear? linear?))]
+    (process-stream algorithms step)))

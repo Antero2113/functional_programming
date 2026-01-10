@@ -22,10 +22,8 @@
                 last-x
                 0.0)]
     (take-while #(<= % b)
-  (filter #(>= % a)
-          (iterate #(+ % step) start)))
-))
-
+                (filter #(>= % a)
+                        (iterate #(+ % step) start)))))
 
 ;; Линейная интерполяция
 
@@ -81,7 +79,6 @@
          (when (seq xs)
            {:out (map #(vector % (linear-interp [p1 p2] %)) xs)
             :last-x (last xs)}))))})
-
 
 (defn newton-algorithm [n]
   {:id :newton

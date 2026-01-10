@@ -17,9 +17,15 @@
   (or (empty? buffer)
       (>= x (first (last buffer)))))
 
-(defn xs-between [a b step last-x]
-  (let [start (if last-x (+ last-x step) a)]
-    (take-while #(<= % b) (iterate #(+ % step) start))))
+(defn xs-between [last-x a b step]
+  (let [start (if last-x
+                last-x
+                0.0)]
+    (take-while #(<= % b)
+  (filter #(>= % a)
+          (iterate #(+ % step) start)))
+))
+
 
 ;; Линейная интерполяция
 
@@ -69,10 +75,13 @@
    (fn [buffer step last-x final?]
      (when (>= (count buffer) 2)
        (let [[p1 p2] (take-last 2 buffer)
-             xs (xs-between (first p1) (first p2) step last-x)]
+             a (first p1)
+             b (first p2)
+             xs (xs-between last-x a b step)]
          (when (seq xs)
            {:out (map #(vector % (linear-interp [p1 p2] %)) xs)
             :last-x (last xs)}))))})
+
 
 (defn newton-algorithm [n]
   {:id :newton
@@ -87,7 +96,7 @@
              [a _] (first window)
              [b _] (last window)
              f (newton-fn window)
-             xs (xs-between a b step last-x)]
+             xs (xs-between last-x a b step)]
          (when (seq xs)
            {:out (map #(vector % (f %)) xs)
             :last-x (last xs)}))))})

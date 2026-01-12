@@ -22,9 +22,9 @@
 (deftest test-xs-between
   (testing "Генерация x с учетом шага и last-x"
     (is (= [0.0 1.0 2.0]
-           (take 3 (xs-between 0.0 0.0 2.0 1.0))))
+           (take 3 (xs-between nil 0.0 2.0 1.0))))
     (is (= [0.0 0.5 1.0 1.5 2.0]
-           (take 5 (xs-between 0.0 0.0 2.0 0.5))))))
+           (take 5 (xs-between nil 0.0 2.0 0.5))))))
 
 (deftest test-linear-interp
   (testing "Линейная интерполяция между двумя точками"

@@ -19,11 +19,10 @@
 
 (defn xs-between [last-x a b step]
   (let [start (if last-x
-                last-x
-                0.0)]
+                (+ last-x step)  
+                a)]              
     (take-while #(<= % b)
-                (filter #(>= % a)
-                        (iterate #(+ % step) start)))))
+                (iterate #(+ % step) start))))
 
 (defn round [x]
   (/ (Math/round (* x 1e6)) 1e6))
@@ -86,9 +85,11 @@
              a (first p1)
              b (first p2)
              xs (xs-between last-x a b step)]
-         (when (seq xs)
+         
            {:out (map #(vector % (linear-interp [p1 p2] %)) xs)
-            :last-x (last xs)}))))})
+            :last-x (if (seq xs)
+                    (last xs)
+                    (or last-x 0.0))})))})
 
 (defn newton-algorithm [n]
   {:id :newton

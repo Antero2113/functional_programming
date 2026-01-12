@@ -19,8 +19,8 @@
 
 (defn xs-between [last-x a b step]
   (let [start (if last-x
-                (+ last-x step)  
-                a)]              
+                (+ last-x step)
+                a)]
     (take-while #(<= % b)
                 (iterate #(+ % step) start))))
 
@@ -85,9 +85,9 @@
              a (first p1)
              b (first p2)
              xs (xs-between last-x a b step)]
-         
-           {:out (map #(vector % (linear-interp [p1 p2] %)) xs)
-            :last-x (if (seq xs)
+
+         {:out (map #(vector % (linear-interp [p1 p2] %)) xs)
+          :last-x (if (seq xs)
                     (last xs)
                     (or last-x 0.0))})))})
 

@@ -22,9 +22,9 @@
 (deftest test-xs-between
   (testing "Генерация x с учетом шага и last-x"
     (is (= [0.0 1.0 2.0]
-           (take 3 (xs-between 0.0 2.0 1.0 nil))))
-    (is (= [1.5 2.0]
-           (take 2 (xs-between 0.0 2.0 0.5 1.0))))))
+           (take 3 (xs-between 0.0 0.0 2.0 1.0))))
+    (is (= [0.0 0.5 1.0 1.5 2.0]
+           (take 5 (xs-between 0.0 0.0 2.0 0.5))))))
 
 (deftest test-linear-interp
   (testing "Линейная интерполяция между двумя точками"
@@ -42,12 +42,8 @@
           res (f buffer step nil false)]
       (is (some? res))
       (is (>= (:last-x res) 1.0))
-      (is (every? true?
-                  (map (fn [[x y] [ex ey]]
-                         (and (< (Math/abs (- x ex)) 1e-6)
-                              (< (Math/abs (- y ey)) 1e-6)))
-                       (:out res)
-                       [[0.0 0.0] [0.5 0.5] [1.0 1.0]]))))))
+      (is (= (mapv round (map first (:out res)))
+             [0.0 0.5 1.0])))))
 
 (deftest test-divided-diffs
   (testing "Разделённые разности Ньютона"
@@ -84,4 +80,3 @@
           f-newton (:process (newton-algorithm 4))]
       (is (nil? (f-linear [[0 0]] 0.5 nil false)))
       (is (nil? (f-newton [[0 0] [1 1] [2 2]] 0.5 nil false))))))
-

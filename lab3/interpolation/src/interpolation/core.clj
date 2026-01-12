@@ -28,14 +28,12 @@
 (defn round [x]
   (/ (Math/round (* x 1e6)) 1e6))
 
-
 (defn xs-between-newton [last-x a b step]
   (let [start (if last-x
                 (+ last-x step)
-                0.0)]         
+                0.0)]
     (take-while #(<= % b)
                 (iterate #(+ % step) start))))
-
 
 ;; Линейная интерполяция
 
@@ -92,7 +90,6 @@
            {:out (map #(vector % (linear-interp [p1 p2] %)) xs)
             :last-x (last xs)}))))})
 
-
 (defn newton-algorithm [n]
   {:id :newton
    :label "newton"
@@ -107,12 +104,10 @@
              [b _] (last window)
              f (newton-fn window)
              xs (xs-between-newton last-x a b step)]
-          {:out (map #(vector % (f %)) xs)
-            :last-x (if (seq xs)
-          (last xs)
-          (or last-x 0.0))})
-          ))})
-
+         {:out (map #(vector % (f %)) xs)
+          :last-x (if (seq xs)
+                    (last xs)
+                    (or last-x 0.0))})))})
 
 ;; Универсальная обработка алгоритма
 
